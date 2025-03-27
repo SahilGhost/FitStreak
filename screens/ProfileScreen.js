@@ -289,7 +289,7 @@ export default function ProfileScreen() {
             <Text style={styles.linkText}>Progress Tracking</Text>
           </View>
 
-          /* Daily Reminders */}
+          {/* Daily Reminders */}
                     <View style={styles.sectionCard}>
                       <View style={styles.preferenceRow}>
                         <Text style={styles.sectionTitle}>Daily Workout Reminders</Text>
