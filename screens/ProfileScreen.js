@@ -1,25 +1,249 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Switch } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  ScrollView, 
+  Switch, 
+  Modal, 
+  TextInput, 
+  Alert 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProfileScreen() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
+  // State for profile details
+  const [username, setUsername] = useState('sahil.ghost');
+  const [name, setName] = useState('sahil 🚀');
+  const [goals, setGoals] = useState([
+    { id: 1, name: 'Build muscle', selected: true },
+    { id: 2, name: 'Improve strength', selected: true },
+    { id: 3, name: 'Lose weight', selected: false },
+    { id: 4, name: 'Increase endurance', selected: false },
+    { id: 5, name: 'Gain flexibility', selected: false }
+  ]);
   
-  // Theme colors - same as in HomeScreen for consistency
+  // State for modals
+  const [isUsernameModalVisible, setIsUsernameModalVisible] = useState(false);
+  const [isNameModalVisible, setIsNameModalVisible] = useState(false);
+  const [isGoalsModalVisible, setIsGoalsModalVisible] = useState(false);
+  const [isWorkoutDifficultyModalVisible, setIsWorkoutDifficultyModalVisible] = useState(false);
+  
+  // State for form inputs
+  const [newUsername, setNewUsername] = useState('');
+  const [newName, setNewName] = useState('');
+  
+  // State for toggles
+  const [isDailyRemindersOn, setIsDailyRemindersOn] = useState(true);
+  const [streak, setStreak] = useState(5);
+  const [points, setPoints] = useState(150);
+  const [workoutDifficulty, setWorkoutDifficulty] = useState('Intermediate');
+
+  // Theme colors
   const colors = {
     primaryOrange: '#FF9500',
-    gradientStart: '#FFAA00',
-    gradientEnd: '#FF7700',
     background: '#FFFFFF',
     textDark: '#333333',
     textMedium: '#555555',
-    textLight: '#666666',
-    placeholder: '#AAAAAA',
-    inputBg: '#F8F8F8',
     border: '#DDDDDD',
+    inputBg: '#F8F8F8',
   };
+
+  // Difficulty levels
+  const difficultyLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+
+  // Toggle goal selection
+  const toggleGoal = (id) => {
+    setGoals(goals.map(goal => 
+      goal.id === id ? { ...goal, selected: !goal.selected } : goal
+    ));
+  };
+
+  // Save username
+  const saveUsername = () => {
+    if (newUsername.trim()) {
+      setUsername(newUsername.trim());
+      setIsUsernameModalVisible(false);
+      setNewUsername('');
+    } else {
+      Alert.alert('Invalid Username', 'Please enter a valid username');
+    }
+  };
+
+  // Save name
+  const saveName = () => {
+    if (newName.trim()) {
+      setName(newName.trim());
+      setIsNameModalVisible(false);
+      setNewName('');
+    } else {
+      Alert.alert('Invalid Name', 'Please enter a valid name');
+    }
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout', 
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive', 
+          onPress: () => {
+            // Implement actual logout logic here
+            Alert.alert('Logged Out', 'You have been logged out successfully');
+          }
+        }
+      ]
+    );
+  };
+
+  // Render username change modal
+  const renderUsernameModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isUsernameModalVisible}
+      onRequestClose={() => setIsUsernameModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Change Username</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Enter new username"
+            value={newUsername}
+            onChangeText={setNewUsername}
+          />
+          <View style={styles.modalButtonGroup}>
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setIsUsernameModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalConfirmButton}
+              onPress={saveUsername}
+            >
+              <Text style={styles.modalConfirmText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render name change modal
+  const renderNameModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isNameModalVisible}
+      onRequestClose={() => setIsNameModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Change Name</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Enter new name"
+            value={newName}
+            onChangeText={setNewName}
+          />
+          <View style={styles.modalButtonGroup}>
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setIsNameModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalConfirmButton}
+              onPress={saveName}
+            >
+              <Text style={styles.modalConfirmText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render goals modal
+  const renderGoalsModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isGoalsModalVisible}
+      onRequestClose={() => setIsGoalsModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Select Fitness Goals</Text>
+          {goals.map(goal => (
+            <TouchableOpacity 
+              key={goal.id} 
+              style={styles.modalGoalItem}
+              onPress={() => toggleGoal(goal.id)}
+            >
+              <Text style={styles.modalGoalText}>{goal.name}</Text>
+              <Ionicons 
+                name={goal.selected ? 'checkbox' : 'square-outline'} 
+                size={24} 
+                color={colors.primaryOrange} 
+              />
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity 
+            style={styles.modalConfirmButton}
+            onPress={() => setIsGoalsModalVisible(false)}
+          >
+            <Text style={styles.modalConfirmText}>Save Goals</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render workout difficulty modal
+  const renderWorkoutDifficultyModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isWorkoutDifficultyModalVisible}
+      onRequestClose={() => setIsWorkoutDifficultyModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Workout Difficulty</Text>
+          {difficultyLevels.map(level => (
+            <TouchableOpacity 
+              key={level} 
+              style={styles.modalGoalItem}
+              onPress={() => {
+                setWorkoutDifficulty(level);
+                setIsWorkoutDifficultyModalVisible(false);
+              }}
+            >
+              <Text style={styles.modalGoalText}>{level}</Text>
+              {workoutDifficulty === level && (
+                <Ionicons 
+                  name="checkmark" 
+                  size={24} 
+                  color={colors.primaryOrange} 
+                />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -32,22 +256,27 @@ export default function ProfileScreen() {
 
           {/* Profile Name Card */}
           <View style={styles.profileCard}>
-            <Text style={styles.profileName}>sahil 🚀 (sahil.ghost)</Text>
+            <Text style={styles.profileName}>{name} ({username})</Text>
           </View>
 
           {/* Goals Section */}
-          <View style={styles.sectionCard}>
+          <TouchableOpacity 
+            style={styles.sectionCard}
+            onPress={() => setIsGoalsModalVisible(true)}
+          >
             <Text style={styles.sectionTitle}>Goals:</Text>
-            <Text style={styles.sectionContent}>Build muscle, Improve strength</Text>
-          </View>
+            <Text style={styles.sectionContent}>
+              {goals.filter(goal => goal.selected).map(goal => goal.name).join(', ')}
+            </Text>
+          </TouchableOpacity>
 
           {/* Streak & Points Section */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Streak, Point:</Text>
+            <Text style={styles.sectionTitle}>Streak (Points)</Text>
             <View style={styles.streakContainer}>
-              <Text style={styles.sectionContent}>5 days</Text>
+              <Text style={styles.sectionContent}>{streak} days</Text>
               <View style={styles.pointsContainer}>
-                <Text style={styles.pointsText}>150</Text>
+                <Text style={styles.pointsText}>{points}</Text>
                 <Text style={styles.pointsLabel}>pts</Text>
                 <Ionicons name="flame" size={16} color={colors.primaryOrange} style={styles.flameIcon} />
               </View>
@@ -60,51 +289,102 @@ export default function ProfileScreen() {
             <Text style={styles.linkText}>Progress Tracking</Text>
           </View>
 
-          {/* Daily Reminders */}
-          <View style={styles.sectionCard}>
-            <View style={styles.preferenceRow}>
-              <Text style={styles.sectionTitle}>Daily Workout Reminders</Text>
-              <Switch
-                trackColor={{ false: colors.border, true: colors.primaryOrange }}
-                thumbColor={colors.background}
-                ios_backgroundColor={colors.border}
-                onValueChange={() => {}}
-                value={true}
-              />
-            </View>
-          </View>
+          /* Daily Reminders */}
+                    <View style={styles.sectionCard}>
+                      <View style={styles.preferenceRow}>
+                        <Text style={styles.sectionTitle}>Daily Workout Reminders</Text>
+                        <Switch
+                          trackColor={{ false: colors.border, true: colors.primaryOrange }}
+                          thumbColor={colors.background}
+                          ios_backgroundColor={colors.border}
+                          onValueChange={() => setIsDailyRemindersOn(!isDailyRemindersOn)}
+                          value={isDailyRemindersOn}
+                        />
+                      </View>
+          
+                      {/* Time Selector - Only shown when reminders are enabled */}
+                      {isDailyRemindersOn && (
+                        <TouchableOpacity 
+                          style={styles.timeSelectionRow}
+                          onPress={() => setShowTimePicker(true)}
+                        >
+                          <Ionicons 
+                            name="time-outline" 
+                            size={24} 
+                            color={colors.primaryOrange} 
+                            style={styles.timeIcon}
+                          />
+                          <Text style={styles.timeText}>
+                            Reminder Time: {formatTime(reminderTime)}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+          
+                    {/* Time Picker Modal */}
+                    {showTimePicker && (
+                      <DateTimePicker
+                        testID="dateTimePicker"
+                        value={reminderTime}
+                        mode="time"
+                        is24Hour={false}
+                        display="default"
+                        onChange={onTimeChange}
+                      />
+                    )}
 
           {/* Workout Recommendations */}
-          <View style={styles.sectionCard}>
+          <TouchableOpacity 
+            style={styles.sectionCard}
+            onPress={() => setIsWorkoutDifficultyModalVisible(true)}
+          >
             <Text style={styles.sectionTitle}>Workout Recommendations</Text>
-            <Text style={styles.sectionContent}>Difficulty:</Text>
-          </View>
+            <Text style={styles.sectionContent}>
+              Difficulty: {workoutDifficulty}
+            </Text>
+          </TouchableOpacity>
 
           {/* Privacy Settings */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Privacy Settings:</Text>
+            <Text style={styles.sectionContent}>Manage your data sharing preferences</Text>
           </View>
 
           {/* Linked Apps */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Linked Apps/V2</Text>
+            <Text style={styles.sectionContent}>Connect fitness tracking apps</Text>
           </View>
 
           {/* Buttons */}
-          <TouchableOpacity style={styles.logoutButton}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingsButton}>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => setIsUsernameModalVisible(true)}
+          >
             <Text style={styles.settingsButtonText}>Change Username</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingsButton}>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => setIsNameModalVisible(true)}
+          >
             <Text style={styles.settingsButtonText}>Change Name</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+
+          {/* Modals */}
+          {renderUsernameModal()}
+          {renderNameModal()}
+          {renderGoalsModal()}
+          {renderWorkoutDifficultyModal()}
         </View>
       </ScrollView>
-      
     </SafeAreaView>
   );
 }
@@ -240,20 +520,96 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#DDDDDD',
-  },
-  navItem: {
+  // Modal Styles
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 15,
+    color: '#333333',
+  },
+  modalInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  modalButtonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalCancelButton: {
+    flex: 1,
+    padding: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#333333',
+    fontSize: 16,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#FF9500',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    
+  },
+  modalConfirmText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalGoalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DDDDDD',
+  },
+  modalGoalText: {
+    fontSize: 16,
+    color: '#333333',
+  },
+  timeSelectionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#DDDDDD',
+    },
+    timeIcon: {
+      marginRight: 10,
+    },
+    timeText: {
+      fontSize: 14,
+      color: '#333333',
+    },
 });

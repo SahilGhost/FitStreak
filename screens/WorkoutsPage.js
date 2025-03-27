@@ -37,13 +37,13 @@ export default function WorkoutsPage() {
     inputBg: '#F8F8F8',
     border: '#DDDDDD',
   };
-
+  
   // Sample exercise library data
   const exerciseLibrary = [
     { 
       id: '1', 
       title: 'Squats', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/squat.jpg'),
       description: 'A compound exercise that works multiple muscle groups in the lower body.',
       muscles: 'Quadriceps, Glutes, Hamstrings, Calves',
       steps: [
@@ -52,12 +52,12 @@ export default function WorkoutsPage() {
         'Go as low as comfortable, ideally until thighs are parallel to the floor',
         'Push through heels to return to starting position'
       ],
-      videoLink: 'https://example.com/squat-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=xqvCmoLULNY'
     },
     { 
       id: '2', 
       title: 'Push-ups', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/pushup.jpg'),
       description: 'A classic bodyweight exercise that targets the upper body.',
       muscles: 'Chest, Shoulders, Triceps, Core',
       steps: [
@@ -66,12 +66,12 @@ export default function WorkoutsPage() {
         'Lower your body until chest nearly touches the floor',
         'Push back up to the starting position'
       ],
-      videoLink: 'https://example.com/pushup-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=WDIpL0pjun0'
     },
     { 
       id: '3', 
       title: 'Lunges', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/lunge.png'),
       description: 'A unilateral exercise that improves balance and leg strength.',
       muscles: 'Quadriceps, Glutes, Hamstrings',
       steps: [
@@ -80,12 +80,12 @@ export default function WorkoutsPage() {
         'Lower your body until both knees are bent at 90 degrees',
         'Push through the front heel to return to starting position'
       ],
-      videoLink: 'https://example.com/lunge-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=tTej-ax9XiA&pp=ygUObHVuZ2UgdHV0b3JpYWw%3D'
     },
     { 
       id: '4', 
       title: 'Plank', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/plank.jpg'),
       description: 'An isometric core exercise that improves stability.',
       muscles: 'Core, Shoulders, Back',
       steps: [
@@ -94,12 +94,12 @@ export default function WorkoutsPage() {
         'Engage core and hold the position',
         'Breathe normally and maintain proper form'
       ],
-      videoLink: 'https://example.com/plank-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=6LqqeBtFn9M&t=7s'
     },
     { 
       id: '5', 
       title: 'Deadlift', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/deadlift.jpg'),
       description: 'A compound movement that targets the posterior chain.',
       muscles: 'Hamstrings, Glutes, Lower Back, Core',
       steps: [
@@ -108,12 +108,12 @@ export default function WorkoutsPage() {
         'Keep back flat, chest up, and core engaged',
         'Stand up by driving hips forward while keeping the bar close to legs'
       ],
-      videoLink: 'https://example.com/deadlift-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=r4MzxtBKyNE'
     },
     { 
       id: '6', 
       title: 'Bicep Curls', 
-      image: 'https://via.placeholder.com/120',
+      image: require('../assets/WorkoutLibrary/bicep.webp'),
       description: 'An isolation exercise focusing on the biceps.',
       muscles: 'Biceps, Forearms',
       steps: [
@@ -122,7 +122,7 @@ export default function WorkoutsPage() {
         'Curl the weights up toward your shoulders',
         'Lower the weights with control back to starting position'
       ],
-      videoLink: 'https://example.com/bicep-tutorial'
+      videoLink: 'https://www.youtube.com/watch?v=XE_pHwbst04'
     },
   ];
 
@@ -266,7 +266,7 @@ export default function WorkoutsPage() {
               {/* Workout Library Section */}
               <Text style={styles.libraryTitle}>Workout Library</Text>
               <Text style={styles.librarySubtitle}>
-                Tap on any exercise to learn more about proper form and technique
+                Tap on any exercise to learn more about proper form and technique.
               </Text>
               
               <FlatList
@@ -285,21 +285,21 @@ export default function WorkoutsPage() {
                   openExerciseModal({
                     id: 'jumping_jacks',
                     title: 'Jumping Jacks',
-                    image: 'https://via.placeholder.com/120?text=Jumping+Jacks',
+                    image: '../assets/WorkoutLibrary/jumpingjack.jpeg',
                     description: 'A full-body exercise that increases cardiovascular fitness and burns calories.',
                     muscles: 'Full Body, Legs, Core, Shoulders',
                     steps: [
-                      'Stand upright with your feet together',
+                      'Stand uprigh t with your feet together',
                       'Jump up while spreading your feet and swinging your arms',
                       'Land softly and return immediately to the starting position',
                       'Repeat for the set duration'
                     ],
-                    videoLink: 'https://example.com/jumpingjacks-tutorial'
+                    videoLink: 'https://www.youtube.com/watch?v=uLVt6u15L98'
                   })
                 }
               >
                 <Image 
-                  source={{ uri: 'https://via.placeholder.com/120?text=Jumping+Jacks' }} 
+                  source={{ uri: '../assets/WorkoutLibrary/jumpingjack.jpeg' }} 
                   style={styles.exerciseImage}
                   resizeMode="cover"
                 />
