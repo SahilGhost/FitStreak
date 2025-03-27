@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera } from 'expo-camera';
+import { Camera, CameraType, FlashMode } from 'expo-camera';
 
 export default function WorkoutsPage() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -23,6 +23,9 @@ export default function WorkoutsPage() {
   const [jumpCount, setJumpCount] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const cameraRef = useRef(null);
+  const [type, setType] = useState(Camera.Constants.Type.back);
+  const [flash, setFlash] = useState(Camera.Constants.FlashMode.off);
+  const [zoom, setZoom] = useState(0);
 
   // Theme colors - same as in HomeScreen for consistency
   const colors = {
@@ -202,7 +205,7 @@ export default function WorkoutsPage() {
       onPress={() => openExerciseModal(item)}
     >
       <Image 
-        source={{ uri: item.image }} 
+        source={item.image} 
         style={styles.exerciseImage}
         resizeMode="cover"
       />
@@ -285,11 +288,11 @@ export default function WorkoutsPage() {
                   openExerciseModal({
                     id: 'jumping_jacks',
                     title: 'Jumping Jacks',
-                    image: '../assets/WorkoutLibrary/jumpingjack.jpeg',
+                    image: require('../assets/WorkoutLibrary/jumpingjack.jpeg'),
                     description: 'A full-body exercise that increases cardiovascular fitness and burns calories.',
                     muscles: 'Full Body, Legs, Core, Shoulders',
                     steps: [
-                      'Stand uprigh t with your feet together',
+                      'Stand upright with your feet together',
                       'Jump up while spreading your feet and swinging your arms',
                       'Land softly and return immediately to the starting position',
                       'Repeat for the set duration'
@@ -299,7 +302,7 @@ export default function WorkoutsPage() {
                 }
               >
                 <Image 
-                  source={{ uri: '../assets/WorkoutLibrary/jumpingjack.jpeg' }} 
+                  source={require('../assets/WorkoutLibrary/jumpingjack.jpeg')}
                   style={styles.exerciseImage}
                   resizeMode="cover"
                 />
@@ -312,17 +315,79 @@ export default function WorkoutsPage() {
       )}
 
       {/* Recording view */}
-      {recordMode && (
-        <View style={{ flex: 1 }}>
-          <Camera style={{ flex: 1 }} ref={cameraRef} />
-          <View style={styles.recordingOverlay}>
-            {recording ? (
-              <Text style={styles.recordingText}>Recording...</Text>
-            ) : (
-              <Text style={styles.recordingText}>Processing...</Text>
-            )}
+      {recordMode && hasPermission !== null && (
+        hasPermission ? (
+          <View style={{ flex: 1 }}>
+            <Camera 
+              style={{ flex: 1 }} 
+              ref={cameraRef}
+              type={type}
+              flashMode={flash}
+              zoom={zoom}
+            >
+              <View style={styles.cameraControlsContainer}>
+                {/* Camera controls */}
+                <View style={styles.cameraButtons}>
+                  <TouchableOpacity 
+                    style={styles.cameraBtnContainer}
+                    onPress={() => {
+                      setType(type === Camera.Constants.Type.back ? Camera.Constants.Type.front : Camera.Constants.Type.back);
+                    }}
+                  >
+                    <Ionicons name="camera-reverse" size={24} color="white" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.recordButton}
+                    onPress={() => {
+                        if (recording && cameraRef.current) {
+                            cameraRef.current.stopRecording();
+                        }
+                    }}
+                  >
+                    <View style={[
+                        styles.recordIndicator,
+                        recording && styles.recording
+                    ]} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.cameraBtnContainer}
+                    onPress={() => {
+                      setFlash(flash === Camera.Constants.FlashMode.off ? Camera.Constants.FlashMode.torch : Camera.Constants.FlashMode.off);
+                    }}
+                  >
+                    <Ionicons 
+                      name={flash === Camera.Constants.FlashMode.off ? "flash-off" : "flash"} 
+                      size={24} 
+                      color="white" 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Recording timer and cancel button */}
+                <View style={styles.recordingInfo}>
+                  {recording && (
+                    <Text style={styles.timerText}>Recording...</Text>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setRecordMode(false);
+                      setRecording(false);
+                    }}
+                  >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Camera>
           </View>
-        </View>
+        ) : (
+          <SafeAreaView style={styles.safeArea}>
+            <Text>No access to camera</Text>
+          </SafeAreaView>
+        )
       )}
 
       {/* Jumping jacks result view */}
@@ -366,7 +431,7 @@ export default function WorkoutsPage() {
                 
                 <ScrollView style={styles.modalScrollView}>
                   <Image 
-                    source={{ uri: selectedExercise.image }} 
+                    source={selectedExercise.image}
                     style={styles.modalImage}
                     resizeMode="cover"
                   />
@@ -693,6 +758,66 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cameraControlsContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  cameraButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  cameraBtnContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordIndicator: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FF0000',
+  },
+  recording: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+  },
+  recordingInfo: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  timerText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,0,0,0.5)',
+    borderRadius: 8,
+  },
+  cancelText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
