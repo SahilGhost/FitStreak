@@ -21,13 +21,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function SignupScreen({ navigation }) {
+  const [realName, setRealName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!email || !password || !confirmPassword) {
+    if (!realName || !email || !password || !confirmPassword) {
       Alert.alert('Missing Information', 'Please fill in all fields to continue.');
       return;
     }
@@ -48,6 +49,16 @@ export default function SignupScreen({ navigation }) {
       if (error) {
         Alert.alert('Signup Failed', error.message);
       } else {
+        // Insert the real name into the "users" table and associate it with the user ID
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([{ id: data.user.id, real_name: realName }]);
+        
+        if (insertError) {
+          Alert.alert('Error', insertError.message);
+          return;
+        }
+        
         Alert.alert('Success', 'Your account has been created successfully!');
         // Navigate to your desired screen upon successful signup
         navigation.navigate('Main');
@@ -78,6 +89,18 @@ export default function SignupScreen({ navigation }) {
           <View style={styles.formContainer}>
             <Text style={styles.welcomeText}>Create Account</Text>
             
+            {/* Real Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Real Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Your Name"
+                placeholderTextColor="#AAA"
+                value={realName}
+                onChangeText={setRealName}
+              />
+            </View>
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
