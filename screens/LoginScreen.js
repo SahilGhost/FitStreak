@@ -24,14 +24,16 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Missing Information', 'Please enter both email and password to continue.');
+      setErrorMessage('Please enter both email and password.');
       return;
     }
-
+    
     setIsLoading(true);
+    setErrorMessage('');
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -40,13 +42,12 @@ export default function LoginScreen({ navigation }) {
       });
       
       if (error) {
-        Alert.alert('Login Failed', error.message);
+        setErrorMessage(error.message);
       } else {
-        // Navigate to your desired screen upon successful login
         navigation.navigate('Main');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      setErrorMessage('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +96,13 @@ export default function LoginScreen({ navigation }) {
                 onChangeText={setPassword}
               />
             </View>
+
+            {/* Display error message on screen */}
+            {errorMessage !== '' && (
+              <Text style={{ color: 'red', marginBottom: 10, textAlign: 'center' }}>
+                {errorMessage}
+              </Text>
+            )}
             
             <TouchableOpacity style={styles.forgotPasswordContainer}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>

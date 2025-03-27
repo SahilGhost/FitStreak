@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -12,10 +12,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Camera } from 'expo-camera';
 
 export default function WorkoutsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
+  const [recordMode, setRecordMode] = useState(false);
+  const [hasPermission, setHasPermission] = useState(null);
+  const [recording, setRecording] = useState(false);
+  const [jumpCount, setJumpCount] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const cameraRef = useRef(null);
 
   // Theme colors - same as in HomeScreen for consistency
   const colors = {
@@ -124,6 +131,71 @@ export default function WorkoutsPage() {
     setModalVisible(true);
   };
 
+  // Request camera permissions on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  // When recordMode becomes true, start recording automatically (max 60 sec)
+  useEffect(() => {
+    if (recordMode && cameraRef.current && !recording) {
+      (async () => {
+        setRecording(true);
+        try {
+          const videoData = await cameraRef.current.recordAsync({ maxDuration: 60 });
+          // After recording stops, exit record mode and upload the video
+          setRecording(false);
+          setRecordMode(false);
+          await uploadVideo(videoData.uri);
+        } catch (e) {
+          console.error(e);
+          setRecording(false);
+          setRecordMode(false);
+        }
+      })();
+    }
+  }, [recordMode]);
+
+  const startRecordingMode = () => {
+    if (hasPermission === false) {
+      alert('Camera permission not granted');
+      return;
+    }
+    setRecordMode(true);
+  };
+
+  const uploadVideo = async (uri) => {
+    setIsUploading(true);
+    let formData = new FormData();
+    formData.append('file', {
+      uri: uri,
+      name: 'jumping_jacks.mp4',
+      type: 'video/mp4'
+    });
+    try {
+      let res = await fetch("http://localhost:8000/upload/jumping_jacks", {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      let json = await res.json();
+      setJumpCount(json.jumping_jack_count);
+    } catch (e) {
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const resetView = () => {
+    setJumpCount(null);
+  };
+
   const renderExerciseCard = ({ item }) => (
     <TouchableOpacity 
       style={styles.exerciseCard}
@@ -139,73 +211,138 @@ export default function WorkoutsPage() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.container}>
-          {/* Start Workout Button */}
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={styles.startButtonGradient}
-          >
-            <TouchableOpacity style={styles.startButton}>
-              <Text style={styles.startButtonText}>Start Workout</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+    <>
+      {!recordMode && jumpCount === null && (
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView style={styles.scrollView}>
+            <View style={styles.container}>
+              {/* Start Workout Button */}
+              <LinearGradient
+                colors={[colors.gradientStart, colors.gradientEnd]}
+                style={styles.startButtonGradient}
+              >
+                <TouchableOpacity style={styles.startButton}>
+                  <Text style={styles.startButtonText}>Start Workout</Text>
+                </TouchableOpacity>
+              </LinearGradient>
 
-          {/* Today's Routine Section */}
-          <Text style={styles.sectionTitle}>Today's routine</Text>
+              {/* Today's Routine Section */}
+              <Text style={styles.sectionTitle}>Today's routine</Text>
 
-          {/* Detailed Exercises Section */}
-          <View style={styles.exercisesContainer}>
-            <Text style={styles.exercisesTitle}>DETAILED EXERCISES WITH TIMES...</Text>
-            
-            <Text style={styles.coachNote}>
-              Include AI Coach Tips/Suggestions in between
-            </Text>
-            
-            <TouchableOpacity style={styles.saveButton}>
-              <Text style={styles.saveButtonText}>Save This Routine</Text>
-              <Ionicons 
-                name="bookmark-outline" 
-                size={16} 
-                color={colors.primaryOrange} 
+              {/* Detailed Exercises Section */}
+              <View style={styles.exercisesContainer}>
+                <Text style={styles.exercisesTitle}>DETAILED EXERCISES WITH TIMES...</Text>
+                
+                <Text style={styles.coachNote}>
+                  Include AI Coach Tips/Suggestions in between
+                </Text>
+                
+                <TouchableOpacity style={styles.saveButton}>
+                  <Text style={styles.saveButtonText}>Save This Routine</Text>
+                  <Ionicons 
+                    name="bookmark-outline" 
+                    size={16} 
+                    color={colors.primaryOrange} 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Additional Feature Buttons */}
+              <TouchableOpacity style={styles.featureButton}>
+                <Text style={styles.featureButtonText}>Build your own workout</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureButton}>
+                <Text style={styles.featureButtonText}>Challenge your friend</Text>
+              </TouchableOpacity>
+              
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>Explore More</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Workout Library Section */}
+              <Text style={styles.libraryTitle}>Workout Library</Text>
+              <Text style={styles.librarySubtitle}>
+                Tap on any exercise to learn more about proper form and technique
+              </Text>
+              
+              <FlatList
+                data={exerciseLibrary}
+                renderItem={renderExerciseCard}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                columnWrapperStyle={styles.exerciseRow}
+                scrollEnabled={false}
               />
-            </TouchableOpacity>
-          </View>
 
-          {/* Additional Feature Buttons */}
-          <TouchableOpacity style={styles.featureButton}>
-            <Text style={styles.featureButtonText}>Build your own workout</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.featureButton}>
-            <Text style={styles.featureButtonText}>Challenge your friend</Text>
-          </TouchableOpacity>
-          
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Explore More</Text>
-            <View style={styles.dividerLine} />
-          </View>
+              {/* Additional Jumping Jacks Card */}
+              <TouchableOpacity 
+                style={styles.exerciseCard}
+                onPress={() =>
+                  openExerciseModal({
+                    id: 'jumping_jacks',
+                    title: 'Jumping Jacks',
+                    image: 'https://via.placeholder.com/120?text=Jumping+Jacks',
+                    description: 'A full-body exercise that increases cardiovascular fitness and burns calories.',
+                    muscles: 'Full Body, Legs, Core, Shoulders',
+                    steps: [
+                      'Stand upright with your feet together',
+                      'Jump up while spreading your feet and swinging your arms',
+                      'Land softly and return immediately to the starting position',
+                      'Repeat for the set duration'
+                    ],
+                    videoLink: 'https://example.com/jumpingjacks-tutorial'
+                  })
+                }
+              >
+                <Image 
+                  source={{ uri: 'https://via.placeholder.com/120?text=Jumping+Jacks' }} 
+                  style={styles.exerciseImage}
+                  resizeMode="cover"
+                />
+                <Text style={styles.exerciseCardTitle}>Jumping Jacks</Text>
+              </TouchableOpacity>
 
-          {/* Workout Library Section */}
-          <Text style={styles.libraryTitle}>Workout Library</Text>
-          <Text style={styles.librarySubtitle}>
-            Tap on any exercise to learn more about proper form and technique
-          </Text>
-          
-          <FlatList
-            data={exerciseLibrary}
-            renderItem={renderExerciseCard}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.exerciseRow}
-            scrollEnabled={false}
-          />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      )}
+
+      {/* Recording view */}
+      {recordMode && (
+        <View style={{ flex: 1 }}>
+          <Camera style={{ flex: 1 }} ref={cameraRef} />
+          <View style={styles.recordingOverlay}>
+            {recording ? (
+              <Text style={styles.recordingText}>Recording...</Text>
+            ) : (
+              <Text style={styles.recordingText}>Processing...</Text>
+            )}
+          </View>
         </View>
-      </ScrollView>
-      
+      )}
+
+      {/* Jumping jacks result view */}
+      {jumpCount !== null && (
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.resultContainer}>
+            {isUploading ? (
+              <Text style={styles.resultText}>Uploading video...</Text>
+            ) : (
+              <>
+                <Text style={styles.resultText}>Jumping Jacks Count: {jumpCount}</Text>
+                <TouchableOpacity style={styles.backButton} onPress={resetView}>
+                  <Text style={styles.backButtonText}>Go Back to Workouts</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </SafeAreaView>
+      )}
+
       {/* Exercise Detail Modal */}
       <Modal
         animationType="slide"
@@ -251,13 +388,25 @@ export default function WorkoutsPage() {
                     <Ionicons name="play-circle" size={20} color="#FFF" />
                     <Text style={styles.videoButtonText}>Watch Tutorial</Text>
                   </TouchableOpacity>
+
+                  {selectedExercise && selectedExercise.title === 'Jumping Jacks' && (
+                    <TouchableOpacity 
+                      style={styles.startRecordingButton} 
+                      onPress={() => {
+                        setModalVisible(false);
+                        startRecordingMode();
+                      }}
+                    >
+                      <Text style={styles.startRecordingButtonText}>Begin Recording</Text>
+                    </TouchableOpacity>
+                  )}
                 </ScrollView>
               </>
             )}
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -499,5 +648,52 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     marginLeft: 8,
+  },
+  startRecordingButton: {
+    backgroundColor: '#FF9500',
+    padding: 10,
+    borderRadius: 8,
+    margin: 10,
+    alignItems: 'center',
+  },
+  startRecordingButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  recordingOverlay: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+    borderRadius: 8,
+  },
+  recordingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resultContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  resultText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 20,
+  },
+  backButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
