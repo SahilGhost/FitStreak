@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useEffect } from 'react';
+import { supabase } from './LoginScreen.js';
 import { 
   View, 
   Text, 
@@ -34,13 +37,48 @@ export default function ProfileScreen() {
   // State for form inputs
   const [newUsername, setNewUsername] = useState('');
   const [newName, setNewName] = useState('');
-  
+  const [reminderTime, setReminderTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
   // State for toggles
   const [isDailyRemindersOn, setIsDailyRemindersOn] = useState(true);
   const [streak, setStreak] = useState(5);
   const [points, setPoints] = useState(150);
   const [workoutDifficulty, setWorkoutDifficulty] = useState('Intermediate');
+  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+  
+      if (!user) {
+        console.error('No user logged in');
+        return;
+      }
+  
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uuid', user.id)
+        .single();
+  
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else if (data) {
+        setUsername(data.username || '');
+        setName(data.real_name || '');
+        setGoals(data.goals || []);
+        setStreak(data.streak || 0);
+        setPoints(data.points || 0);
+        setReminderTime(data.reminder ? new Date(data.reminder) : new Date());
+        setWorkoutDifficulty(data.difficulty || 'Intermediate');
+      }
+    };
+  
+    fetchUserProfile();
+  }, []);
 
+  
   // Theme colors
   const colors = {
     primaryOrange: '#FF9500',
@@ -60,28 +98,120 @@ export default function ProfileScreen() {
       goal.id === id ? { ...goal, selected: !goal.selected } : goal
     ));
   };
-
+  const toggleDailyReminders = async () => {
+    const newValue = !isDailyRemindersOn;
+    setIsDailyRemindersOn(newValue);
+  
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
+    if (newValue) {
+      await supabase
+        .from('users')
+        .update({ reminder: reminderTime.toISOString() })
+        .eq('uuid', user.id);
+    } else {
+      await supabase
+        .from('users')
+        .update({ reminder: null })
+        .eq('uuid', user.id);
+    }
+  };
+  
   // Save username
-  const saveUsername = () => {
-    if (newUsername.trim()) {
+  const saveUsername = async () => {
+    if (!newUsername.trim()) {
+      Alert.alert('Invalid Username', 'Please enter a valid username');
+      return;
+    }
+  
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+  
+    if (authError || !user) {
+      console.error('Error getting user:', authError);
+      Alert.alert('Error', 'Could not identify user');
+      return;
+    }
+  
+    const { error } = await supabase
+      .from('users')
+      .update({ username: newUsername.trim() })
+      .eq('uuid', user.id);
+  
+    if (error) {
+      console.error('Failed to update username:', error);
+      Alert.alert('Error', 'Failed to update username');
+    } else {
       setUsername(newUsername.trim());
       setIsUsernameModalVisible(false);
       setNewUsername('');
-    } else {
-      Alert.alert('Invalid Username', 'Please enter a valid username');
     }
   };
 
+  
+  const saveGoals = async () => {
+    const selectedGoalNames = goals.filter(g => g.selected).map(g => g.name);
+  
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+  
+    if (authError || !user) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+  
+    const { error } = await supabase
+      .from('users')
+      .update({ goals: selectedGoalNames })
+      .eq('uuid', user.id);
+  
+    if (!error) {
+      setIsGoalsModalVisible(false);
+    } else {
+      Alert.alert('Error', 'Failed to save goals.');
+    }
+  };
+
+
   // Save name
-  const saveName = () => {
-    if (newName.trim()) {
+  const saveName = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Invalid Name', 'Please enter a valid name');
+      return;
+    }
+  
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+  
+    if (authError || !user) {
+      console.error('Error getting user:', authError);
+      Alert.alert('Error', 'Could not identify user');
+      return;
+    }
+  
+    const { error } = await supabase
+      .from('users')
+      .update({ real_name: newName.trim() })
+      .eq('uuid', user.id);
+  
+    if (error) {
+      console.error('Failed to update name:', error);
+      Alert.alert('Error', 'Failed to update name');
+    } else {
       setName(newName.trim());
       setIsNameModalVisible(false);
       setNewName('');
-    } else {
-      Alert.alert('Invalid Name', 'Please enter a valid name');
     }
   };
+
 
   // Logout function
   const handleLogout = () => {
@@ -100,6 +230,16 @@ export default function ProfileScreen() {
         }
       ]
     );
+  };
+  const onTimeChange = async (event, selectedDate) => {
+    const currentDate = selectedDate || reminderTime;
+    setShowTimePicker(false);
+    setReminderTime(currentDate);
+  
+    await supabase
+      .from('users')
+      .update({ reminder: currentDate.toISOString() })
+      .eq('uuid', user.id);
   };
 
   // Render username change modal
@@ -128,7 +268,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.modalConfirmButton}
-              onPress={saveUsername}
+              onPress={saveName}
             >
               <Text style={styles.modalConfirmText}>Save</Text>
             </TouchableOpacity>
@@ -164,7 +304,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.modalConfirmButton}
-              onPress={saveName}
+              onPress={saveUsername}
             >
               <Text style={styles.modalConfirmText}>Save</Text>
             </TouchableOpacity>
@@ -209,7 +349,20 @@ export default function ProfileScreen() {
       </View>
     </Modal>
   );
-
+  const saveWorkoutDifficulty = async (level) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
+    await supabase
+      .from('users')
+      .update({ difficulty: level })
+      .eq('uuid', user.id);
+  
+    setWorkoutDifficulty(level);
+    setIsWorkoutDifficultyModalVisible(false);
+  };
+  
   // Render workout difficulty modal
   const renderWorkoutDifficultyModal = () => (
     <Modal
@@ -244,7 +397,14 @@ export default function ProfileScreen() {
       </View>
     </Modal>
   );
-
+  const formatTime = (date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const adjustedHours = hours % 12 || 12;
+    const paddedMinutes = minutes.toString().padStart(2, '0');
+    return `${adjustedHours}:${paddedMinutes} ${ampm}`;
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scrollView}>
@@ -297,7 +457,7 @@ export default function ProfileScreen() {
                           trackColor={{ false: colors.border, true: colors.primaryOrange }}
                           thumbColor={colors.background}
                           ios_backgroundColor={colors.border}
-                          onValueChange={() => setIsDailyRemindersOn(!isDailyRemindersOn)}
+                          onValueChange={toggleDailyReminders}
                           value={isDailyRemindersOn}
                         />
                       </View>

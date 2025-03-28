@@ -12,19 +12,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, CameraType, FlashMode } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export default function WorkoutsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [recordMode, setRecordMode] = useState(false);
-  const [hasPermission, setHasPermission] = useState(null);
+  const [facing, setFacing] = useState('back'); // 'front' or 'back'
+  const [permission, requestPermission] = useCameraPermissions();
   const [recording, setRecording] = useState(false);
   const [jumpCount, setJumpCount] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const cameraRef = useRef(null);
-  const [type, setType] = useState(Camera.Constants.Type.back);
-  const [flash, setFlash] = useState(Camera.Constants.FlashMode.off);
   const [zoom, setZoom] = useState(0);
 
   // Theme colors - same as in HomeScreen for consistency
@@ -163,8 +162,9 @@ export default function WorkoutsPage() {
   }, [recordMode]);
 
   const startRecordingMode = () => {
-    if (hasPermission === false) {
+    if (!permission?.granted) {
       alert('Camera permission not granted');
+      requestPermission();
       return;
     }
     setRecordMode(true);
@@ -318,12 +318,11 @@ export default function WorkoutsPage() {
       {recordMode && hasPermission !== null && (
         hasPermission ? (
           <View style={{ flex: 1 }}>
-            <Camera 
-              style={{ flex: 1 }} 
+            <CameraView
+              style={{ flex: 1 }}
+              facing={facing}
               ref={cameraRef}
-              type={type}
-              flashMode={flash}
-              zoom={zoom}
+              enableZoomGesture
             >
               <View style={styles.cameraControlsContainer}>
                 {/* Camera controls */}
@@ -331,7 +330,7 @@ export default function WorkoutsPage() {
                   <TouchableOpacity 
                     style={styles.cameraBtnContainer}
                     onPress={() => {
-                      setType(type === Camera.Constants.Type.back ? Camera.Constants.Type.front : Camera.Constants.Type.back);
+                      setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
                     }}
                   >
                     <Ionicons name="camera-reverse" size={24} color="white" />
@@ -349,19 +348,6 @@ export default function WorkoutsPage() {
                         styles.recordIndicator,
                         recording && styles.recording
                     ]} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.cameraBtnContainer}
-                    onPress={() => {
-                      setFlash(flash === Camera.Constants.FlashMode.off ? Camera.Constants.FlashMode.torch : Camera.Constants.FlashMode.off);
-                    }}
-                  >
-                    <Ionicons 
-                      name={flash === Camera.Constants.FlashMode.off ? "flash-off" : "flash"} 
-                      size={24} 
-                      color="white" 
-                    />
                   </TouchableOpacity>
                 </View>
 
@@ -381,7 +367,7 @@ export default function WorkoutsPage() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </Camera>
+            </CameraView>
           </View>
         ) : (
           <SafeAreaView style={styles.safeArea}>
