@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-export default function WorkoutsPage() {
+export default function WorkoutsPage({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [recordMode, setRecordMode] = useState(false);
@@ -161,9 +161,10 @@ export default function WorkoutsPage() {
     }
   }, [recordMode]);
 
-  const startRecordingMode = () => {
-    if (!permission?.granted) {
-      alert('Camera permission not granted');
+  const startRecordingMode = async () => {
+    const { status: audioStatus } = await Camera.requestMicrophonePermissionsAsync();
+    if (!permission?.granted || audioStatus !== 'granted') {
+      alert('Camera or Microphone permission not granted');
       requestPermission();
       return;
     }
@@ -315,8 +316,8 @@ export default function WorkoutsPage() {
       )}
 
       {/* Recording view */}
-      {recordMode && hasPermission !== null && (
-        hasPermission ? (
+      {recordMode && permission !== null && (
+        permission.granted ? (
           <View style={{ flex: 1 }}>
             <CameraView
               style={{ flex: 1 }}
@@ -445,7 +446,7 @@ export default function WorkoutsPage() {
                       style={styles.startRecordingButton} 
                       onPress={() => {
                         setModalVisible(false);
-                        startRecordingMode();
+                        navigation.navigate('RecordingScreen');
                       }}
                     >
                       <Text style={styles.startRecordingButtonText}>Begin Recording</Text>

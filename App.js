@@ -11,9 +11,11 @@ import HomeScreen from './screens/HomeScreen';
 import WorkoutsPage from './screens/WorkoutsPage';
 import LeaderboardPage from './screens/LeaderboardPage';
 import ProfileScreen from './screens/ProfileScreen';
+import RecordingScreen from './screens/RecordingScreen';
 
-const Stack = createStackNavigator();
+const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const WorkoutsStack = createStackNavigator();
 
 // Custom tab bar component
 function CustomTabBar({ state, descriptors, navigation }) {
@@ -30,13 +32,11 @@ function CustomTabBar({ state, descriptors, navigation }) {
               target: route.key,
               canPreventDefault: true,
             });
-
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
           };
 
-          // Define icons and labels for each tab
           let iconName;
           let label = route.name;
           
@@ -77,9 +77,17 @@ function CustomTabBar({ state, descriptors, navigation }) {
           );
         })}
       </View>
-      {/* Safe area padding for iPhone X+ models */}
       {Platform.OS === 'ios' && <View style={styles.bottomSafeArea} />}
     </View>
+  );
+}
+
+function WorkoutsStackNavigator() {
+  return (
+    <WorkoutsStack.Navigator screenOptions={{ headerShown: false }}>
+      <WorkoutsStack.Screen name="WorkoutsPage" component={WorkoutsPage} />
+      <WorkoutsStack.Screen name="RecordingScreen" component={RecordingScreen} />
+    </WorkoutsStack.Navigator>
   );
 }
 
@@ -91,7 +99,7 @@ function MainTabNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Workouts" component={WorkoutsPage} />
+      <Tab.Screen name="Workouts" component={WorkoutsStackNavigator} />
       <Tab.Screen name="Leaderboard" component={LeaderboardPage} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -101,11 +109,11 @@ function MainTabNavigator() {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
-      </Stack.Navigator>
+      <RootStack.Navigator initialRouteName="Login">
+        <RootStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
+        <RootStack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }}/>
+        <RootStack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
+      </RootStack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
   );
