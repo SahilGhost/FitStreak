@@ -220,34 +220,52 @@ export default function WorkoutsPage({ navigation }) {
   };
 
   const startRecording = useCallback(async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current) {
+      Alert.alert('Error', 'Camera not ready');
+      return;
+    }
 
     try {
       setRecording(true);
-      //Add a small delay to prevent immediate stop
-      setTimeout(async () => {
-        try {
-          const videoData = await cameraRef.current.recordAsync({ maxDuration: 60, mode: 'video' });
-          setRecording(false);
-          await uploadVideo(videoData.uri);
-        } catch (err) {
-          console.error("Error during recording:", err);
-          setRecording(false);
-          Alert.alert('Recording Error', 'Failed to record video.');
-        }
+      
+      // Configure recording options
+      const recordingOptions = {
+        maxDuration: 60,
+        quality: '720p',
+        mute: false,
+        videoOutput: 'mp4',
+        maxFileSize: 10000000,
+      };
 
-      }, 100);
+      // Start recording with a proper delay to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const videoData = await cameraRef.current.recordAsync(recordingOptions);
+      
+      if (!videoData || !videoData.uri) {
+        throw new Error('No video data received');
+      }
 
-    } catch (e) {
-      console.error("Error starting recording:", e);
       setRecording(false);
-      Alert.alert('Recording Error', 'Failed to start recording.'); //More specific error
+      console.log('Video saved to:', videoData.uri);
+      await uploadVideo(videoData.uri);
+
+    } catch (error) {
+      console.error("Error during recording:", error);
+      setRecording(false);
+      Alert.alert('Recording Error', 'Failed to record video. Please try again.');
     }
   }, []);
 
-  const stopRecording = useCallback(() => {
-    if (recording && cameraRef.current) {
-      cameraRef.current.stopRecording();
+  const stopRecording = useCallback(async () => {
+    if (!recording || !cameraRef.current) return;
+
+    try {
+      await cameraRef.current.stopRecording();
+      setRecording(false);
+    } catch (error) {
+      console.error("Error stopping recording:", error);
+      Alert.alert('Error', 'Failed to stop recording');
     }
   }, [recording]);
 
@@ -293,7 +311,7 @@ export default function WorkoutsPage({ navigation }) {
 
   const renderCameraView = () => (
     <View style={{ flex: 1 }}>
-      <CameraView style={{ flex: 1 }} facing={facing} ref={cameraRef} enableZoomGesture>
+      <CameraView mode = "video" style={{ flex: 1 }} facing={facing} ref={cameraRef} enableZoomGesture>
         <View style={styles.cameraControlsContainer}>
           <View style={styles.cameraButtons}>
             <TouchableOpacity
