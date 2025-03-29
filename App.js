@@ -11,11 +11,9 @@ import HomeScreen from './screens/HomeScreen';
 import WorkoutsPage from './screens/WorkoutsPage';
 import LeaderboardPage from './screens/LeaderboardPage';
 import ProfileScreen from './screens/ProfileScreen';
-import RecordingScreen from './screens/RecordingScreen';
 
 const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
-const WorkoutsStack = createStackNavigator();
 
 // Custom tab bar component
 function CustomTabBar({ state, descriptors, navigation }) {
@@ -82,15 +80,6 @@ function CustomTabBar({ state, descriptors, navigation }) {
   );
 }
 
-function WorkoutsStackNavigator() {
-  return (
-    <WorkoutsStack.Navigator screenOptions={{ headerShown: false }}>
-      <WorkoutsStack.Screen name="WorkoutsPage" component={WorkoutsPage} />
-      <WorkoutsStack.Screen name="RecordingScreen" component={RecordingScreen} />
-    </WorkoutsStack.Navigator>
-  );
-}
-
 function MainTabNavigator() {
   return (
     <Tab.Navigator 
@@ -99,7 +88,7 @@ function MainTabNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Workouts" component={WorkoutsStackNavigator} />
+      <Tab.Screen name="Workouts" component={WorkoutsPage} />
       <Tab.Screen name="Leaderboard" component={LeaderboardPage} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
