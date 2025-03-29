@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LeaderboardPage() {
@@ -20,6 +20,10 @@ export default function LeaderboardPage() {
   const [timeframe, setTimeframe] = useState('Weekly');
   const [challengeModalVisible, setChallengeModalVisible] = useState(false);
   const [currentChallenge, setCurrentChallenge] = useState(null);
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [currentBadge, setCurrentBadge] = useState(null);
+  const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
+  const [newFriendUsername, setNewFriendUsername] = useState('');
   
   const leaderboardData = [
     { rank: 1, name: 'pannu_doggy', points: 200, isCurrentUser: false },
@@ -52,19 +56,31 @@ export default function LeaderboardPage() {
   ];
 
   const badges = [
-    { id: 1, name: 'Consistency Champion', icon: 'trophy' },
-    { id: 2, name: 'Early Bird', icon: 'time' },
-    { id: 3, name: 'Strength Master', icon: 'barbell' },
-    { id: 4, name: 'Cardio King', icon: 'heart' },
-    { id: 5, name: 'Workout Warrior', icon: 'fitness' },
-    { id: 6, name: 'Wellness Wizard', icon: 'leaf' },
-    { id: 7, name: 'Social Star', icon: 'people' },
-    { id: 8, name: 'Goal Getter', icon: 'flag' },
+    { id: 1, name: 'Consistency Champion', icon: 'trophy', unlocked: true, description: 'Worked out 7 days in a row' },
+    { id: 2, name: 'Early Bird', icon: 'time', unlocked: true, description: 'Completed 5 workouts before 8am' },
+    { id: 3, name: 'Strength Master', icon: 'barbell', unlocked: true, description: 'Lifted a total of 1000kg in a week' },
+    { id: 4, name: 'Cardio King', icon: 'heart', unlocked: false, description: 'Run a total of 50km in a month' },
+    { id: 5, name: 'Workout Warrior', icon: 'fitness', unlocked: true, description: 'Completed 20 workouts in a month' },
+    { id: 6, name: 'Wellness Wizard', icon: 'leaf', unlocked: false, description: 'Track nutrition for 14 days straight' },
+    { id: 7, name: 'Social Star', icon: 'people', unlocked: false, description: 'Connect with 10 friends on the app' },
+    { id: 8, name: 'Goal Getter', icon: 'flag', unlocked: true, description: 'Achieved 5 personal goals' },
   ];
 
   const openChallengeModal = (challenge) => {
     setCurrentChallenge(challenge);
     setChallengeModalVisible(true);
+  };
+
+  const openBadgeModal = (badge) => {
+    setCurrentBadge(badge);
+    setBadgeModalVisible(true);
+  };
+
+  const handleAddFriend = () => {
+    // Here you would typically handle the API call to add friend
+    console.log(`Adding friend: ${newFriendUsername}`);
+    setNewFriendUsername('');
+    setAddFriendModalVisible(false);
   };
 
   return (
@@ -154,17 +170,36 @@ export default function LeaderboardPage() {
             <Text style={styles.sectionTitle}>Badges & Achievements</Text>
             <View style={styles.badgesGrid}>
               {badges.map((badge) => (
-                <View key={badge.id} style={styles.badgeItem}>
-                  <View style={styles.badgeCircle}>
-                    <Ionicons name={badge.icon} size={24} color={colors.primaryOrange} />
+                <TouchableOpacity 
+                  key={badge.id} 
+                  style={styles.badgeItem}
+                  onPress={() => openBadgeModal(badge)}
+                >
+                  <View style={[
+                    styles.badgeCircle, 
+                    !badge.unlocked && styles.badgeCircleLocked
+                  ]}>
+                    <Ionicons 
+                      name={badge.icon} 
+                      size={24} 
+                      color={badge.unlocked ? colors.primaryOrange : '#AAAAAA'} 
+                    />
+                    {!badge.unlocked && (
+                      <View style={styles.lockIconContainer}>
+                        <Ionicons name="lock-closed" size={12} color="#FFFFFF" />
+                      </View>
+                    )}
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
 
           {/* Add Friends */}
-          <TouchableOpacity style={styles.addFriendButton}>
+          <TouchableOpacity 
+            style={styles.addFriendButton}
+            onPress={() => setAddFriendModalVisible(true)}
+          >
             <Ionicons name="person-add" size={20} color={colors.background} style={styles.addFriendIcon} />
             <Text style={styles.addFriendText}>Add New Friend</Text>
           </TouchableOpacity>
@@ -223,6 +258,113 @@ export default function LeaderboardPage() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Badge Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={badgeModalVisible}
+        onRequestClose={() => setBadgeModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={0.9}
+          onPress={() => setBadgeModalVisible(false)}
+        >
+          <View style={styles.badgeModalContent}>
+            {currentBadge && (
+              <TouchableOpacity activeOpacity={1}>
+                <View style={styles.badgeModalHeader}>
+                  <View style={[
+                    styles.badgeCircleLarge, 
+                    !currentBadge.unlocked && styles.badgeCircleLocked
+                  ]}>
+                    <Ionicons 
+                      name={currentBadge.icon} 
+                      size={46} 
+                      color={currentBadge.unlocked ? colors.primaryOrange : '#AAAAAA'} 
+                    />
+                    {!currentBadge.unlocked && (
+                      <View style={styles.lockIconContainerLarge}>
+                        <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                  
+                  <Text style={styles.badgeModalTitle}>{currentBadge.name}</Text>
+                  {currentBadge.unlocked ? (
+                    <View style={styles.badgeStatusContainer}>
+                      <Ionicons name="checkmark-circle" size={16} color="#4CAF50" style={styles.badgeStatusIcon} />
+                      <Text style={styles.badgeStatusText}>Unlocked</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.badgeStatusContainer}>
+                      <Ionicons name="lock-closed" size={16} color="#AAAAAA" style={styles.badgeStatusIcon} />
+                      <Text style={[styles.badgeStatusText, {color: '#AAAAAA'}]}>Locked</Text>
+                    </View>
+                  )}
+                  
+                  <Text style={styles.badgeModalDescription}>{currentBadge.description}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Add Friend Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={addFriendModalVisible}
+        onRequestClose={() => setAddFriendModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Friend</Text>
+              <TouchableOpacity
+                onPress={() => setAddFriendModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={colors.textDark} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Enter username</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Friend's username"
+                value={newFriendUsername}
+                onChangeText={setNewFriendUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.declineButton}
+                onPress={() => setAddFriendModalVisible(false)}
+              >
+                <Text style={styles.declineButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.acceptButton,
+                  !newFriendUsername.trim() && styles.disabledButton
+                ]}
+                onPress={handleAddFriend}
+                disabled={!newFriendUsername.trim()}
+              >
+                <Text style={styles.acceptButtonText}>Add Friend</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -416,6 +558,78 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDDDDD',
   },
+  badgeCircleLocked: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
+  },
+  lockIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#AAAAAA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '80%',
+    padding: 24,
+    alignItems: 'center',
+  },
+  badgeCircleLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    marginBottom: 16,
+  },
+  lockIconContainerLarge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#AAAAAA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeModalHeader: {
+    alignItems: 'center',
+  },
+  badgeModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  badgeStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  badgeStatusIcon: {
+    marginRight: 6,
+  },
+  badgeStatusText: {
+    fontSize: 14,
+    color: '#4CAF50',
+  },
+  badgeModalDescription: {
+    fontSize: 16,
+    color: '#555555',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
   addFriendButton: {
     flexDirection: 'row',
     backgroundColor: '#FF9500',
@@ -526,5 +740,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  }
+  },
+  disabledButton: {
+    backgroundColor: '#FFD9A8',
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    padding: 12,
+    fontSize: 16,
+    color: '#333333',
+    width: '100%',
+  },
 });

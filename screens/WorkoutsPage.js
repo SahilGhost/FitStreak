@@ -8,13 +8,15 @@ import {
   ScrollView, 
   Image,
   Modal,
-  FlatList
+  FlatList,
+  TextInput,  
+  Animated     
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-export default function WorkoutsPage({ navigation }) {
+export default function WorkoutsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [recordMode, setRecordMode] = useState(false);
@@ -25,7 +27,32 @@ export default function WorkoutsPage({ navigation }) {
   const [isUploading, setIsUploading] = useState(false);
   const cameraRef = useRef(null);
   const [zoom, setZoom] = useState(0);
+  // Add to your state declarations
+  const [workoutActive, setWorkoutActive] = useState(false);
+  const [workoutStarted, setWorkoutStarted] = useState(false);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+  const timerRef = useRef(null);
+  const [workoutComplete, setWorkoutComplete] = useState(false);
 
+  // Sample workout routine
+  const workoutRoutine = [
+    { id: '1', name: 'Jumping Jacks', duration: 30, description: 'Full body warm-up' },
+    { id: '2', name: 'Push-ups', duration: 45, description: 'Upper body strength' },
+    { id: '3', name: 'Squats', duration: 60, description: 'Lower body power' },
+    { id: '4', name: 'Plank', duration: 30, description: 'Core stability' },
+    { id: '5', name: 'Lunges', duration: 45, description: 'Leg strength and balance' },
+    { id: '6', name: 'Mountain Climbers', duration: 30, description: 'Cardio and core' },
+    { id: '7', name: 'Cool Down Stretches', duration: 60, description: 'Flexibility and recovery' },
+  ];
+  const [challengeModalVisible, setChallengeModalVisible] = useState(false);
+  const [challengeData, setChallengeData] = useState({
+    friendUsername: '',
+    description: '',
+    expirationDays: 3,
+    pointValue: 10,
+  });
   // Theme colors - same as in HomeScreen for consistency
   const colors = {
     primaryOrange: '#FF9500',
@@ -127,7 +154,51 @@ export default function WorkoutsPage({ navigation }) {
       videoLink: 'https://www.youtube.com/watch?v=XE_pHwbst04'
     },
   ];
-
+  // Add these workout timer functions
+  const startWorkout = () => {
+    setWorkoutActive(true);
+  };
+  
+  const startWorkoutTimer = () => {
+    setWorkoutStarted(true);
+    setTimeRemaining(workoutRoutine[0].duration);
+    setTimerActive(true);
+  };
+  
+  const nextExercise = () => {
+    if (currentExerciseIndex < workoutRoutine.length - 1) {
+      setCurrentExerciseIndex(currentExerciseIndex + 1);
+      setTimeRemaining(workoutRoutine[currentExerciseIndex + 1].duration);
+    } else {
+      // Workout complete
+      setWorkoutActive(false);
+      setWorkoutStarted(false);
+      setCurrentExerciseIndex(0);
+      setTimerActive(false);
+      setWorkoutComplete(true);
+    }
+  };
+  
+  // Timer effect
+  useEffect(() => {
+    if (timerActive) {
+      timerRef.current = setInterval(() => {
+        setTimeRemaining(prevTime => {
+          if (prevTime <= 1) {
+            clearInterval(timerRef.current);
+            setTimeout(() => nextExercise(), 500);
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    
+    return () => clearInterval(timerRef.current);
+  }, [timerActive, currentExerciseIndex]);
+  
   const openExerciseModal = (exercise) => {
     setSelectedExercise(exercise);
     setModalVisible(true);
@@ -160,11 +231,10 @@ export default function WorkoutsPage({ navigation }) {
       })();
     }
   }, [recordMode]);
-
-  const startRecordingMode = async () => {
-    const { status: audioStatus } = await Camera.requestMicrophonePermissionsAsync();
-    if (!permission?.granted || audioStatus !== 'granted') {
-      alert('Camera or Microphone permission not granted');
+  
+  const startRecordingMode = () => {
+    if (!permission?.granted) {
+      alert('Camera permission not granted');
       requestPermission();
       return;
     }
@@ -225,8 +295,13 @@ export default function WorkoutsPage({ navigation }) {
                 colors={[colors.gradientStart, colors.gradientEnd]}
                 style={styles.startButtonGradient}
               >
-                <TouchableOpacity style={styles.startButton}>
-                  <Text style={styles.startButtonText}>Start Workout</Text>
+                <TouchableOpacity 
+                  style={styles.startButton}
+                  onPress={workoutComplete ? null : startWorkout}
+                >
+                  <Text style={styles.startButtonText}>
+                    {workoutComplete ? "Workout Completed!" : "Start Workout"}
+                  </Text>
                 </TouchableOpacity>
               </LinearGradient>
 
@@ -255,8 +330,20 @@ export default function WorkoutsPage({ navigation }) {
               <TouchableOpacity style={styles.featureButton}>
                 <Text style={styles.featureButtonText}>Build your own workout</Text>
               </TouchableOpacity>
+              {/* dev only */}
+              <TouchableOpacity 
+                style={[styles.featureButton, { backgroundColor: '#FFECEC' }]}
+                onPress={() => setWorkoutComplete(false)}
+              >
+                <Text style={[styles.featureButtonText, { color: '#FF3B30' }]}>
+                  🔁 Reset Workout (Dev Only)
+                </Text>
+              </TouchableOpacity>
               
-              <TouchableOpacity style={styles.featureButton}>
+              <TouchableOpacity 
+                style={styles.featureButton}
+                onPress={() => setChallengeModalVisible(true)}
+              >
                 <Text style={styles.featureButtonText}>Challenge your friend</Text>
               </TouchableOpacity>
               
@@ -314,10 +401,11 @@ export default function WorkoutsPage({ navigation }) {
           </ScrollView>
         </SafeAreaView>
       )}
-
+      
+      
       {/* Recording view */}
-      {recordMode && permission !== null && (
-        permission.granted ? (
+      {recordMode && hasPermission !== null && (
+        hasPermission ? (
           <View style={{ flex: 1 }}>
             <CameraView
               style={{ flex: 1 }}
@@ -394,7 +482,158 @@ export default function WorkoutsPage({ navigation }) {
           </View>
         </SafeAreaView>
       )}
-
+      {/* Dynamic Workout Timer View */}
+      {workoutActive && (
+        <View style={styles.workoutOverlay}>
+          <SafeAreaView style={{flex: 1}}>
+            <LinearGradient
+              colors={['#FF9500', '#FF7700']}
+              style={styles.workoutGradient}
+            >
+              {!workoutStarted && !workoutComplete ? (
+                // Workout Preview Timeline
+                <View style={styles.workoutPreview}>
+                  <View style={styles.workoutHeader}>
+                    <TouchableOpacity 
+                      style={styles.closeWorkoutButton}
+                      onPress={() => setWorkoutActive(false)}
+                    >
+                      <Ionicons name="close" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.workoutTitle}>Today's Workout</Text>
+                    <View style={{width: 24}} />
+                  </View>
+                  
+                  <ScrollView style={styles.timelineContainer}>
+                    <View style={styles.timelineLine} />
+                    
+                    {workoutRoutine.map((exercise, index) => (
+                      <Animated.View 
+                        key={exercise.id}
+                        style={[
+                          styles.timelineItem, 
+                          { 
+                            opacity: 1, 
+                            transform: [{translateY: 0}]
+                          }
+                        ]}
+                      >
+                        <View style={styles.timelineDot} />
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineTitle}>{exercise.name}</Text>
+                          <Text style={styles.timelineDuration}>{exercise.duration} seconds</Text>
+                          <Text style={styles.timelineDescription}>{exercise.description}</Text>
+                        </View>
+                      </Animated.View>
+                    ))}
+                  </ScrollView>
+                  
+                  <TouchableOpacity 
+                    style={styles.startTimerButton}
+                    onPress={startWorkoutTimer}
+                  >
+                    <Text style={styles.startTimerText}>Start Timer</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Active Workout Timer
+                <View style={styles.activeWorkout}>
+                  <View style={styles.workoutHeader}>
+                    <TouchableOpacity 
+                      style={styles.closeWorkoutButton}
+                      onPress={() => {
+                        setWorkoutActive(false);
+                        setWorkoutStarted(false);
+                        setCurrentExerciseIndex(0);
+                        setTimerActive(false);
+                      }}
+                    >
+                      <Ionicons name="close" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.workoutTitle}>
+                      {currentExerciseIndex + 1}/{workoutRoutine.length}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.pauseButton}
+                      onPress={() => setTimerActive(!timerActive)}
+                    >
+                      <Ionicons 
+                        name={timerActive ? "pause" : "play"} 
+                        size={24} 
+                        color="#FFF" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {workoutComplete && (
+                    <View style={{ alignItems: 'center', marginTop: 40 }}>
+                      <Text style={{ fontSize: 28, fontWeight: 'bold', color: 'white' }}>
+                        Workout Completed!
+                      </Text>
+                      <Text style={{ fontSize: 20, color: 'white', marginTop: 12 }}>
+                        +10 Points 🎉
+                      </Text>
+                    </View>
+                  )}
+                  
+                  <View style={styles.timerContainer}>
+                    <Text style={styles.currentExerciseName}>
+                      {workoutRoutine[currentExerciseIndex].name}
+                    </Text>
+                    <Text style={styles.currentExerciseDescription}>
+                      {workoutRoutine[currentExerciseIndex].description}
+                    </Text>
+                    
+                    <View style={styles.timerCircle}>
+                      <Text style={styles.timerText}>{timeRemaining}</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={styles.skipButton}
+                      onPress={nextExercise}
+                    >
+                      <Text style={styles.skipButtonText}>Skip</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  
+                  <View style={styles.progressContainer}>
+                    <Text style={styles.progressTitle}>Coming up next:</Text>
+                    <View style={styles.progressTimeline}>
+                      {workoutRoutine.map((exercise, index) => (
+                        <View 
+                          key={exercise.id}
+                          style={[
+                            styles.progressItem,
+                            index < currentExerciseIndex && styles.completedExercise,
+                            index === currentExerciseIndex && styles.activeExercise
+                          ]}
+                        >
+                          <View style={[
+                            styles.progressDot,
+                            index < currentExerciseIndex && styles.completedDot,
+                            index === currentExerciseIndex && styles.activeDot
+                          ]} />
+                          <Text style={[
+                            styles.progressText,
+                            index === currentExerciseIndex && styles.activeText
+                          ]}>
+                            {exercise.name}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+                
+              )}
+            </LinearGradient>
+          </SafeAreaView>
+        </View>
+        
+      )}
+      
       {/* Exercise Detail Modal */}
       <Modal
         animationType="slide"
@@ -446,7 +685,7 @@ export default function WorkoutsPage({ navigation }) {
                       style={styles.startRecordingButton} 
                       onPress={() => {
                         setModalVisible(false);
-                        navigation.navigate('RecordingScreen');
+                        startRecordingMode();
                       }}
                     >
                       <Text style={styles.startRecordingButtonText}>Begin Recording</Text>
@@ -455,6 +694,129 @@ export default function WorkoutsPage({ navigation }) {
                 </ScrollView>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Challenge Friend Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={challengeModalVisible}
+        onRequestClose={() => setChallengeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Challenge a Friend</Text>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setChallengeModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color={colors.textDark} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalScrollView}>
+              <Text style={styles.modalSectionTitle}>Friend Username</Text>
+              <TextInput
+                style={[styles.challengeInput, { minHeight: 40, height: 40 }]}
+                placeholder="Enter friend's username"
+                numberOfLines={1}
+                value={challengeData.friendUsername}
+                onChangeText={(text) => setChallengeData({ ...challengeData, friendUsername: text })}
+              />
+              <Text style={styles.modalSectionTitle}>Challenge Description</Text>
+              <TextInput
+                style={styles.challengeInput}
+                placeholder="Describe your challenge..."
+                multiline
+                numberOfLines={3}
+                value={challengeData.description}
+                onChangeText={(text) => setChallengeData({...challengeData, description: text})}
+              />
+              
+              <Text style={styles.modalSectionTitle}>Expiration Time</Text>
+              <View style={styles.expirationSelector}>
+                <TouchableOpacity 
+                  style={[
+                    styles.expirationOption, 
+                    challengeData.expirationDays === 1 && styles.expirationSelected
+                  ]}
+                  onPress={() => setChallengeData({...challengeData, expirationDays: 1})}
+                >
+                  <Text style={[
+                    styles.expirationText,
+                    challengeData.expirationDays === 1 && styles.expirationTextSelected
+                  ]}>24 hrs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[
+                    styles.expirationOption, 
+                    challengeData.expirationDays === 3 && styles.expirationSelected
+                  ]}
+                  onPress={() => setChallengeData({...challengeData, expirationDays: 3})}
+                >
+                  <Text style={[
+                    styles.expirationText,
+                    challengeData.expirationDays === 3 && styles.expirationTextSelected
+                  ]}>3 days</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[
+                    styles.expirationOption, 
+                    challengeData.expirationDays === 7 && styles.expirationSelected
+                  ]}
+                  onPress={() => setChallengeData({...challengeData, expirationDays: 7})}
+                >
+                  <Text style={[
+                    styles.expirationText,
+                    challengeData.expirationDays === 7 && styles.expirationTextSelected
+                  ]}>7 days</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.modalSectionTitle}>Point Value</Text>
+              <View style={styles.pointSelector}>
+                <TouchableOpacity 
+                  style={styles.pointAdjust}
+                  onPress={() => setChallengeData({
+                    ...challengeData, 
+                    pointValue: Math.max(5, challengeData.pointValue - 5)
+                  })}
+                >
+                  <Ionicons name="remove" size={24} color={colors.primaryOrange} />
+                </TouchableOpacity>
+                <Text style={styles.pointValue}>{challengeData.pointValue}</Text>
+                <TouchableOpacity 
+                  style={styles.pointAdjust}
+                  onPress={() => setChallengeData({
+                    ...challengeData, 
+                    pointValue: Math.min(50, challengeData.pointValue + 5)
+                  })}
+                >
+                  <Ionicons name="add" size={24} color={colors.primaryOrange} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.disclaimerContainer}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.textMedium} />
+                <Text style={styles.disclaimerText}>
+                  If your challenge is accepted, you'll also receive 5 points!
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.sendChallengeButton}
+                onPress={() => {
+                  // Add logic to send challenge here
+                  setChallengeModalVisible(false);
+                  alert('Challenge sent!');
+                }}
+              >
+                <Text style={styles.sendChallengeText}>Send Challenge</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -807,5 +1169,293 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Add to styles
+  workoutOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'white',
+    zIndex: 1000,
+  },
+  workoutGradient: {
+    flex: 1,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  closeWorkoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  workoutTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  workoutPreview: {
+    flex: 1,
+    paddingBottom: 20,
+  },
+  timelineContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 23,
+    top: 20,
+    bottom: 20,
+    width: 2,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'white',
+    marginTop: 5,
+    marginRight: 12,
+    zIndex: 1,
+  },
+  timelineContent: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  timelineTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  timelineDuration: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 4,
+  },
+  timelineDescription: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  startTimerButton: {
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    alignSelf: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  startTimerText: {
+    color: '#FF9500',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  activeWorkout: {
+    flex: 1,
+  },
+  timerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  currentExerciseName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  currentExerciseDescription: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  timerCircle: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 8,
+    borderColor: 'white',
+    marginBottom: 40,
+  },
+  timerText: {
+    fontSize: 60,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  skipButtonText: {
+    color: 'white',
+    marginRight: 4,
+  },
+  progressContainer: {
+    padding: 16,
+  },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 12,
+  },
+  progressTimeline: {
+    marginLeft: 8,
+  },
+  progressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    opacity: 0.7,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginRight: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  completedExercise: {
+    opacity: 0.4,
+  },
+  activeExercise: {
+    opacity: 1,
+  },
+  completedDot: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  activeDot: {
+    backgroundColor: 'white',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  activeText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  pauseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  expirationSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  expirationOption: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+  },
+  expirationSelected: {
+    backgroundColor: '#FFEBCC',
+    borderColor: '#FF9500',
+  },
+  expirationText: {
+    color: '#555555',
+    fontWeight: '500',
+  },
+  expirationTextSelected: {
+    color: '#FF9500',
+    fontWeight: 'bold',
+  },
+  pointSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  pointAdjust: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+  },
+  pointValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginHorizontal: 20,
+  },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F8F8',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  disclaimerText: {
+    flex: 1,
+    marginLeft: 8,
+    color: '#555555',
+    fontSize: 14,
+  },
+  sendChallengeButton: {
+    backgroundColor: '#FF9500',
+    paddingVertical: 14,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sendChallengeText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
