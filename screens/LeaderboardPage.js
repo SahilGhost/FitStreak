@@ -26,16 +26,16 @@ export default function LeaderboardPage() {
   const [newFriendUsername, setNewFriendUsername] = useState('');
   
   const leaderboardData = [
-    { rank: 1, name: 'pannu_doggy', points: 200, isCurrentUser: false },
-    { rank: 2, name: 'sahil 🚀', points: 180, isCurrentUser: true },
-    { rank: 3, name: 'Sammy', points: 170, isCurrentUser: false },
-    { rank: 4, name: 'Amogh', points: 160, isCurrentUser: false },
-    { rank: 5, name: 'Vaibhav', points: 150, isCurrentUser: false },
-    { rank: 6, name: 'Sid.leaks', points: 140, isCurrentUser: false },
-    { rank: 7, name: 'aswath', points: 130, isCurrentUser: false },
-    { rank: 8, name: 'anay', points: 120, isCurrentUser: false },
-    { rank: 9, name: 'soham_skis', points: 110, isCurrentUser: false },
-    { rank: 10, name: 'Vita Ashwin', points: 100, isCurrentUser: false },
+    { rank: 1, name: 'gymboy', points: 200, isCurrentUser: false },
+    { rank: 2, name: 'ironman 🚀', points: 180, isCurrentUser: true },
+    { rank: 3, name: 'marshmello', points: 170, isCurrentUser: false },
+    { rank: 4, name: 'boo', points: 160, isCurrentUser: false },
+    { rank: 5, name: 'Vai', points: 150, isCurrentUser: false },
+    { rank: 6, name: 'Sid', points: 140, isCurrentUser: false },
+    { rank: 7, name: 'Aishu', points: 130, isCurrentUser: false },
+    { rank: 8, name: 'anda', points: 120, isCurrentUser: false },
+    { rank: 9, name: 'Solana', points: 110, isCurrentUser: false },
+    { rank: 10, name: 'Vitamindel', points: 100, isCurrentUser: false },
   ];
 
   const challenges = [
@@ -98,16 +98,16 @@ export default function LeaderboardPage() {
             <View style={styles.rankDetails}>
               <View style={styles.rankItem}>
                 <Text style={styles.rankLabel}>Rank</Text>
-                <Text style={styles.rankValue}>5</Text>
+                <Text style={styles.rankValue}>2</Text>
               </View>
               <View style={styles.rankItem}>
                 <Text style={styles.rankLabel}>Score</Text>
-                <Text style={styles.rankValue}>150</Text>
+                <Text style={styles.rankValue}>180</Text>
               </View>
               <View style={styles.rankItem}>
                 <Text style={styles.rankLabel}>Streak</Text>
                 <View style={styles.streakValue}>
-                  <Text style={styles.rankValue}>5</Text>
+                  <Text style={styles.rankValue}>4</Text>
                   <Ionicons name="flame" size={16} color={colors.primaryOrange} style={styles.streakIcon} />
                 </View>
               </View>

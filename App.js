@@ -11,6 +11,7 @@ import HomeScreen from './screens/HomeScreen';
 import WorkoutsPage from './screens/WorkoutsPage';
 import LeaderboardPage from './screens/LeaderboardPage';
 import ProfileScreen from './screens/ProfileScreen';
+import ForumPage from './screens/ForumPage';
 
 const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -46,6 +47,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
             iconName = isFocused ? 'trophy' : 'trophy-outline';
           } else if (route.name === 'Profile') {
             iconName = isFocused ? 'person' : 'person-outline';
+          } else if (route.name === 'Forum') {
+            iconName = isFocused ? 'chatbubbles' : 'chatbubbles-outline';
           }
 
           return (
@@ -91,6 +94,7 @@ function MainTabNavigator() {
       <Tab.Screen name="Workouts" component={WorkoutsPage} />
       <Tab.Screen name="Leaderboard" component={LeaderboardPage} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Forum" component={ForumPage} />
     </Tab.Navigator>
   );
 }
@@ -116,6 +120,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 10,
+    width: '100%',
   },
   bottomNav: {
     flexDirection: 'row',
@@ -124,17 +129,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: 8,
     paddingBottom: 8,
+    justifyContent: 'space-between', // This ensures even spacing
+    width: '100%',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    width: '20%', // Each item takes exactly 20% of the width (for 5 items)
   },
   tabLabel: {
     fontSize: 12,
     marginTop: 4,
     fontWeight: '500',
+    textAlign: 'center', // Centers the text
   },
   bottomSafeArea: {
     height: Platform.OS === 'ios' ? 24 : 0,

@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
 
 export default function HomeScreen() {
   // Theme colors
@@ -16,6 +17,38 @@ export default function HomeScreen() {
     inputBg: '#F8F8F8',
     border: '#DDDDDD',
   };
+
+  // Sample fitness score data for the past 6 months
+  const fitnessData = {
+    labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
+    datasets: [
+      {
+        data: [580, 605, 650, 680, 710, 750],
+        color: () => colors.primaryOrange,
+        strokeWidth: 3
+      }
+    ]
+  };
+
+  // Chart config
+  const chartConfig = {
+    backgroundGradientFrom: '#FFFFFF',
+    backgroundGradientTo: '#FFFFFF',
+    decimalPlaces: 0,
+    color: () => colors.primaryOrange,
+    labelColor: () => colors.textMedium,
+    style: {
+      borderRadius: 16
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: colors.primaryOrange
+    }
+  };
+
+  // Screen width
+  const screenWidth = Dimensions.get('window').width - 40;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -77,12 +110,45 @@ export default function HomeScreen() {
           <View style={styles.workoutCard}>
             <Text style={styles.workoutTitle}>Today's Workout</Text>
             <View style={styles.workoutDetails}>
-              <Text style={styles.workoutType}>Today is leg day</Text>
-              <Text style={styles.workoutDescription}>
-                Brief Summary of Today.
-                Following Exercises:
-                Time: ___
-              </Text>
+              <Text style={styles.workoutType}>Leg Day Power Session</Text>
+              
+              <View style={styles.workoutStatsRow}>
+                <View style={styles.workoutStat}>
+                  <Ionicons name="time-outline" size={18} color={colors.primaryOrange} />
+                  <Text style={styles.workoutStatValue}>45 min</Text>
+                </View>
+                <View style={styles.workoutStat}>
+                  <Ionicons name="flame-outline" size={18} color={colors.primaryOrange} />
+                  <Text style={styles.workoutStatValue}>380 cal</Text>
+                </View>
+                <View style={styles.workoutStat}>
+                  <Ionicons name="fitness-outline" size={18} color={colors.primaryOrange} />
+                  <Text style={styles.workoutStatValue}>High</Text>
+                </View>
+              </View>
+              
+              <View style={styles.exerciseList}>
+                <View style={styles.exerciseItem}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primaryOrange} />
+                  <Text style={styles.exerciseText}>Barbell Squats - 4 × 10</Text>
+                </View>
+                <View style={styles.exerciseItem}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primaryOrange} />
+                  <Text style={styles.exerciseText}>Romanian Deadlifts - 3 × 12</Text>
+                </View>
+                <View style={styles.exerciseItem}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primaryOrange} />
+                  <Text style={styles.exerciseText}>Leg Press - 3 × 15</Text>
+                </View>
+                <View style={styles.exerciseItem}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primaryOrange} />
+                  <Text style={styles.exerciseText}>Walking Lunges - 3 × 20</Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity style={styles.startWorkoutButton}>
+                <Text style={styles.startWorkoutText}>Start Workout</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -98,7 +164,19 @@ export default function HomeScreen() {
           <View style={styles.fitnessScoreContainer}>
             <Text style={styles.scoreLabel}>Current Fitness Score:</Text>
             <Text style={styles.scoreValue}>750</Text>
-            <Text style={styles.growthChartLabel}>__GROWTH CHART__</Text>
+            
+            {/* Growth Chart */}
+            <View style={styles.chartContainer}>
+              <Text style={styles.chartTitle}>6-Month Progress</Text>
+              <LineChart
+                data={fitnessData}
+                width={screenWidth}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.chart}
+              />
+            </View>
           </View>
 
           {/* Retake Fitness Test Button */}
@@ -190,6 +268,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   workoutTitle: {
     fontSize: 18,
@@ -204,16 +287,52 @@ const styles = StyleSheet.create({
   },
   workoutType: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#333333',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
-  workoutDescription: {
+  workoutStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 14,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  workoutStat: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workoutStatValue: {
+    fontSize: 14,
+    color: '#333333',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  exerciseList: {
+    marginBottom: 16,
+  },
+  exerciseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  exerciseText: {
     fontSize: 14,
     color: '#555555',
-    lineHeight: 20,
-    textAlign: 'center',
+    marginLeft: 8,
+  },
+  startWorkoutButton: {
+    backgroundColor: '#FF9500',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  startWorkoutText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
   quoteContainer: {
     marginBottom: 20,
@@ -243,11 +362,22 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#FF9500',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  growthChartLabel: {
+  chartContainer: {
+    marginTop: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  chartTitle: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#555555',
+    marginBottom: 12,
+  },
+  chart: {
+    borderRadius: 12,
+    paddingRight: 16,
   },
   retakeButton: {
     backgroundColor: '#F8F8F8',
@@ -255,6 +385,8 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
   },
   retakeButtonText: {
     fontSize: 16,

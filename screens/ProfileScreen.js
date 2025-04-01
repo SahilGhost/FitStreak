@@ -18,8 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   // State for profile details
-  const [username, setUsername] = useState('sahil.ghost');
-  const [name, setName] = useState('sahil 🚀');
+  const [username, setUsername] = useState('iron.man');
+  const [name, setName] = useState('ironman 🚀');
   const [goals, setGoals] = useState([
     { id: 1, name: 'Build muscle', selected: true },
     { id: 2, name: 'Improve strength', selected: true },
