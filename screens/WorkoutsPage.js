@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'; // Import DraggableFlatList
 
 const colors = {
   primaryOrange: '#FF9500',
@@ -216,22 +217,6 @@ export default function WorkoutsPage({ navigation }) {
       setWorkoutComplete(true);
     }
   };
-  const onDragEnd = (result) => {
-    const { destination, source, draggableId } = result;
-  
-    // If there's no destination or the item was dropped back in its original position
-    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
-      return;
-    }
-  
-    // Moving within the selected exercises list
-    if (source.droppableId === 'selected-exercises' && destination.droppableId === 'selected-exercises') {
-      const newExercises = Array.from(selectedExercises);
-      const [removed] = newExercises.splice(source.index, 1);
-      newExercises.splice(destination.index, 0, removed);
-      setSelectedExercises(newExercises);
-      return;
-    }
 
   useEffect(() => {
     if (timerActive) {
@@ -269,10 +254,10 @@ export default function WorkoutsPage({ navigation }) {
       // Configure recording options
       const recordingOptions = {
         maxDuration: 60,
-        quality: '720p',
+        quality: '360p',
         mute: false,
         videoOutput: 'mp4',
-        maxFileSize: 10000000,
+        maxFileSize: 3000000000,
       };
 
       // Start recording with a proper delay to initialize
@@ -306,6 +291,7 @@ export default function WorkoutsPage({ navigation }) {
       Alert.alert('Error', 'Failed to stop recording');
     }
   }, [recording]);
+
   const saveCustomWorkout = () => {
     if (customWorkoutName.trim() === '') {
       Alert.alert('Error', 'Please enter a name for your workout');
@@ -328,21 +314,38 @@ export default function WorkoutsPage({ navigation }) {
   const uploadVideo = async (uri) => {
     setIsUploading(true);
     const formData = new FormData();
+    
+    // Convert the Expo file URI to a blob-like object
     formData.append('file', {
       uri: uri,
-      name: 'jumping_jacks.mp4',
       type: 'video/mp4',
+      name: 'jumping_jacks.mp4'
     });
+
     try {
-      const res = await fetch('http://localhost:8000/upload/jumping_jacks', {
+      // Replace YOUR_LOCAL_IP with your computer's IP address (e.g., 192.168.1.100)
+      const res = await fetch('http://192.168.12.123:8000/upload/jumping_jacks', {
         method: 'POST',
         body: formData,
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
       });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const json = await res.json();
+      console.log('Upload response:', json); // Add this for debugging
       setJumpCount(json.jumping_jack_count);
     } catch (e) {
-      Alert.alert('Upload failed', 'Failed to upload video');
+      console.error('Upload error:', e);
+      Alert.alert(
+        'Upload failed', 
+        'Failed to upload video. Please check your network connection and try again.'
+      );
     } finally {
       setIsUploading(false);
     }
@@ -421,7 +424,10 @@ export default function WorkoutsPage({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.featureButton}>
+          <TouchableOpacity 
+            style={styles.featureButton} 
+            onPress={() => setBuildWorkoutModalVisible(true)}
+          >
             <Text style={styles.featureButtonText}>Build your own workout</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -668,6 +674,7 @@ export default function WorkoutsPage({ navigation }) {
       </View>
     </Modal>
   );
+
   const renderBuildWorkoutModal = () => (
     <Modal
       animationType="slide"
@@ -679,125 +686,108 @@ export default function WorkoutsPage({ navigation }) {
         <View style={[styles.modalContent, { height: '80%' }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Build Your Workout</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setBuildWorkoutModalVisible(false)}>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setBuildWorkoutModalVisible(false)}
+            >
               <Ionicons name="close" size={24} color={colors.textDark} />
             </TouchableOpacity>
           </View>
-  
+
           <TextInput
             style={[styles.challengeInput, { minHeight: 40, height: 40, marginBottom: 15 }]}
             placeholder="Enter workout name"
             value={customWorkoutName}
             onChangeText={setCustomWorkoutName}
           />
-  
-          <DragDropContext onDragEnd={onDragEnd}>
-            <View style={styles.workoutBuilderContainer}>
-              <View style={styles.workoutColumn}>
-                <Text style={styles.workoutColumnTitle}>Available Exercises</Text>
-                <Droppable droppableId="available-exercises">
-                  {(provided) => (
-                    <ScrollView
-                      style={styles.exerciseList}
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
+
+          <View style={styles.workoutBuilderContainer}>
+            <View style={styles.workoutColumn}>
+              <Text style={styles.workoutColumnTitle}>Available Exercises</Text>
+              <DraggableFlatList
+                data={availableExercises}
+                onDragEnd={({ data }) => setAvailableExercises(data)}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, drag, isActive }) => (
+                  <ScaleDecorator>
+                    <TouchableOpacity
+                      style={[
+                        styles.exerciseTag,
+                        isActive && styles.draggingExercise
+                      ]}
+                      onLongPress={drag}
+                      disabled={isActive}
                     >
-                      {availableExercises.map((exercise, index) => (
-                        <Draggable key={exercise.id} draggableId={exercise.id} index={index}>
-                          {(provided, snapshot) => (
-                            <View
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={[
-                                styles.exerciseTag,
-                                snapshot.isDragging && styles.draggingExercise,
-                                provided.draggableProps.style,
-                              ]}
-                            >
-                              <Text style={styles.exerciseTagText}>{exercise.name}</Text>
-                              <Text style={styles.exerciseTagDuration}>{exercise.duration}s</Text>
-                            </View>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </ScrollView>
-                  )}
-                </Droppable>
-              </View>
-  
-              <View style={styles.workoutColumn}>
-                <Text style={styles.workoutColumnTitle}>Your Workout</Text>
-                <Text style={styles.workoutInstructions}>Drag exercises here and reorder them</Text>
-                <Droppable droppableId="selected-exercises">
-                  {(provided) => (
-                    <ScrollView
-                      style={[styles.exerciseList, styles.selectedExerciseList]}
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                    >
-                      {selectedExercises.length === 0 ? (
-                        <Text style={styles.emptyListText}>Drag exercises here</Text>
-                      ) : (
-                        selectedExercises.map((exercise, index) => (
-                          <Draggable key={exercise.id} draggableId={`selected-${exercise.id}-${index}`} index={index}>
-                            {(provided, snapshot) => (
-                              <View
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                style={[
-                                  styles.exerciseTag,
-                                  styles.selectedExerciseTag,
-                                  snapshot.isDragging && styles.draggingExercise,
-                                  provided.draggableProps.style,
-                                ]}
-                              >
-                                <Text style={styles.exerciseTagText}>{exercise.name}</Text>
-                                <View style={styles.exerciseTagControls}>
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      const newExercises = [...selectedExercises];
-                                      newExercises[index].duration = Math.max(15, newExercises[index].duration - 15);
-                                      setSelectedExercises(newExercises);
-                                    }}
-                                    style={styles.durationControl}
-                                  >
-                                    <Text style={styles.durationControlText}>-</Text>
-                                  </TouchableOpacity>
-                                  <Text style={styles.exerciseTagDuration}>{exercise.duration}s</Text>
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      const newExercises = [...selectedExercises];
-                                      newExercises[index].duration = Math.min(120, newExercises[index].duration + 15);
-                                      setSelectedExercises(newExercises);
-                                    }}
-                                    style={styles.durationControl}
-                                  >
-                                    <Text style={styles.durationControlText}>+</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            )}
-                          </Draggable>
-                        ))
-                      )}
-                      {provided.placeholder}
-                    </ScrollView>
-                  )}
-                </Droppable>
-              </View>
+                      <Text style={styles.exerciseTagText}>{item.name}</Text>
+                      <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
+                    </TouchableOpacity>
+                  </ScaleDecorator>
+                )}
+              />
             </View>
-          </DragDropContext>
-  
-          <TouchableOpacity style={styles.saveCustomWorkoutButton} onPress={saveCustomWorkout}>
+
+            <View style={styles.workoutColumn}>
+              <Text style={styles.workoutColumnTitle}>Your Workout</Text>
+              <Text style={styles.workoutInstructions}>
+                Drag exercises here and reorder them
+              </Text>
+              <DraggableFlatList
+                data={selectedExercises}
+                onDragEnd={({ data }) => setSelectedExercises(data)}
+                keyExtractor={(item, index) => `selected-${item.id}-${index}`}
+                renderItem={({ item, drag, isActive, index }) => (
+                  <ScaleDecorator>
+                    <TouchableOpacity
+                      style={[
+                        styles.exerciseTag,
+                        styles.selectedExerciseTag,
+                        isActive && styles.draggingExercise
+                      ]}
+                      onLongPress={drag}
+                      disabled={isActive}
+                    >
+                      <Text style={styles.exerciseTagText}>{item.name}</Text>
+                      <View style={styles.exerciseTagControls}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const newExercises = [...selectedExercises];
+                            newExercises[index].duration = Math.max(15, newExercises[index].duration - 15);
+                            setSelectedExercises(newExercises);
+                          }}
+                          style={styles.durationControl}
+                        >
+                          <Text style={styles.durationControlText}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const newExercises = [...selectedExercises];
+                            newExercises[index].duration = Math.min(120, newExercises[index].duration + 15);
+                            setSelectedExercises(newExercises);
+                          }}
+                          style={styles.durationControl}
+                        >
+                          <Text style={styles.durationControlText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  </ScaleDecorator>
+                )}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.saveCustomWorkoutButton} 
+            onPress={saveCustomWorkout}
+          >
             <Text style={styles.saveCustomWorkoutText}>Save Workout</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
+
   const renderChallengeModal = () => (
     <Modal
       animationType="slide"
@@ -972,536 +962,600 @@ export default function WorkoutsPage({ navigation }) {
       {workoutActive && renderWorkoutActive()}
       {renderModalContent()}
       {renderChallengeModal()}
+      {renderBuildWorkoutModal()}
     </>
   );
 }
 
-  const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-    scrollView: { flex: 1 },
-    container: { flex: 1, padding: 16, paddingBottom: 24 },
-    startButtonGradient: {
-      borderRadius: 25,
-      marginVertical: 20,
-      marginHorizontal: '20%',
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-    },
-    startButton: { alignItems: 'center', justifyContent: 'center', padding: 15 },
-    startButtonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      textAlign: 'center',
-      marginVertical: 16,
-      color: '#333333',
-    },
-    exercisesContainer: {
-      backgroundColor: '#F8F8F8',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 20,
-      borderColor: '#DDDDDD',
-      borderWidth: 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    exercisesTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: '#333333',
-      textAlign: 'center',
-      marginBottom: 15,
-    },
-    coachNote: {
-      fontSize: 14,
-      color: '#555555',
-      textAlign: 'center',
-      marginVertical: 15,
-      lineHeight: 20,
-    },
-    saveButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 10,
-    },
-    saveButtonText: {
-      fontSize: 14,
-      color: '#FF9500',
-      marginRight: 5,
-      fontWeight: '500',
-    },
-    featureButton: {
-      backgroundColor: '#F8F8F8',
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-      marginBottom: 16,
-      borderColor: '#DDDDDD',
-      borderWidth: 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    featureButtonText: { fontSize: 16, fontWeight: '600', color: '#333333' },
-    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: '#DDDDDD' },
-    dividerText: {
-      paddingHorizontal: 10,
-      color: '#555555',
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    libraryTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#333333',
-      marginBottom: 8,
-    },
-    librarySubtitle: { fontSize: 14, color: '#666666', marginBottom: 16 },
-    exerciseRow: { justifyContent: 'space-between', marginBottom: 10 },
-    exerciseCard: {
-      width: '48%',
-      backgroundColor: '#F8F8F8',
-      borderRadius: 12,
-      overflow: 'hidden',
-      marginBottom: 12,
-      borderColor: '#DDDDDD',
-      borderWidth: 1,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    exerciseImage: { width: '100%', height: 120, backgroundColor: '#DDDDDD' },
-    exerciseCardTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#333333',
-      textAlign: 'center',
-      padding: 10,
-    },
-    modalOverlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-      width: '90%',
-      maxHeight: '80%',
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 5,
-      elevation: 5,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: '#DDDDDD',
-    },
-    modalTitle: { fontSize: 18, fontWeight: '700', color: '#333333' },
-    closeButton: { padding: 4 },
-    modalScrollView: { padding: 16 },
-    modalImage: {
-      width: '100%',
-      height: 200,
-      borderRadius: 12,
-      marginBottom: 16,
-      backgroundColor: '#DDDDDD',
-    },
-    modalSectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#333333',
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    modalText: {
-      fontSize: 14,
-      color: '#555555',
-      lineHeight: 20,
-      marginBottom: 12,
-    },
-    stepText: {
-      fontSize: 14,
-      color: '#555555',
-      lineHeight: 22,
-      marginBottom: 8,
-      paddingLeft: 8,
-    },
-    stepNumber: { fontWeight: '600', color: '#FF9500' },
-    videoButton: {
-      backgroundColor: '#FF9500',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 12,
-      borderRadius: 25,
-      marginTop: 20,
-      marginBottom: 10,
-    },
-    videoButtonText: { color: '#FFFFFF', fontWeight: '600', marginLeft: 8 },
-    startRecordingButton: {
-      backgroundColor: '#FF9500',
-      padding: 10,
-      borderRadius: 8,
-      margin: 10,
-      alignItems: 'center',
-    },
-    startRecordingButtonText: { color: '#FFFFFF', fontWeight: '600' },
-    recordingOverlay: {
-      position: 'absolute',
-      bottom: 40,
-      alignSelf: 'center',
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      padding: 12,
-      borderRadius: 8,
-    },
-    recordingText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-    resultContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 16,
-    },
-    resultText: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: '#333333',
-      marginBottom: 20,
-    },
-    backButton: {
-      backgroundColor: '#FF9500',
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-    },
-    backButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-    cameraControlsContainer: {
-      flex: 1,
-      backgroundColor: 'transparent',
-      justifyContent: 'flex-end',
-      padding: 20,
-    },
-    cameraButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      marginBottom: 30,
-    },
-    cameraBtnContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    recordButton: {
-      width: 70,
-      height: 70,
-      borderRadius: 35,
-      backgroundColor: 'rgba(255,255,255,0.3)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    recordIndicator: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      backgroundColor: '#FF0000',
-    },
-    recording: { width: 30, height: 30, borderRadius: 4 },
-    recordingInfo: { alignItems: 'center', marginBottom: 20 },
-    timerText: {
-      color: 'white',
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-    },
-    cancelButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      backgroundColor: 'rgba(255,0,0,0.5)',
-      borderRadius: 8,
-      alignSelf: 'center',
-    },
-    cancelText: { color: 'white', fontSize: 16, fontWeight: '600' },
-    uploadOverlay: {
-      position: 'absolute',
-      top: '50%',
-      left: 0,
-      right: 0,
-      alignItems: 'center',
-    },
-    uploadText: {
-      fontSize: 18,
-      color: '#FFFFFF',
-      backgroundColor: 'rgba(0,0,0,0.7)',
-      padding: 10,
-      borderRadius: 8,
-    },
-    workoutOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'white',
-      zIndex: 1000,
-    },
-    workoutGradient: { flex: 1 },
-    workoutHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-    },
-    closeWorkoutButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    workoutTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
-    workoutPreview: { flex: 1, paddingBottom: 20 },
-    timelineContainer: { flex: 1, paddingHorizontal: 16 },
-    timelineLine: {
-      position: 'absolute',
-      left: 23,
-      top: 20,
-      bottom: 20,
-      width: 2,
-      backgroundColor: 'rgba(255,255,255,0.3)',
-    },
-    timelineItem: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: 20,
-    },
-    timelineDot: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      backgroundColor: 'white',
-      marginTop: 5,
-      marginRight: 12,
-      zIndex: 1,
-    },
-    timelineContent: {
-      flex: 1,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 12,
-      padding: 12,
-    },
-    timelineTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: 'white',
-      marginBottom: 4,
-    },
-    timelineDuration: {
-      fontSize: 14,
-      color: 'rgba(255,255,255,0.9)',
-      marginBottom: 4,
-    },
-    timelineDescription: {
-      fontSize: 14,
-      color: 'rgba(255,255,255,0.7)',
-    },
-    startTimerButton: {
-      backgroundColor: 'white',
-      paddingVertical: 16,
-      paddingHorizontal: 32,
-      borderRadius: 30,
-      alignSelf: 'center',
-      marginTop: 20,
-      marginBottom: 30,
-    },
-    startTimerText: {
-      color: '#FF9500',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
-    activeWorkout: { flex: 1 },
-    timerContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-    },
-    currentExerciseName: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: 'white',
-      textAlign: 'center',
-      marginBottom: 8,
-    },
-    currentExerciseDescription: {
-      fontSize: 16,
-      color: 'rgba(255,255,255,0.8)',
-      textAlign: 'center',
-      marginBottom: 40,
-    },
-    timerCircle: {
-      width: 180,
-      height: 180,
-      borderRadius: 90,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 8,
-      borderColor: 'white',
-      marginBottom: 40,
-    },
-    timerText: { fontSize: 60, fontWeight: 'bold', color: 'white' },
-    skipButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 20,
-    },
-    skipButtonText: { color: 'white', marginRight: 4 },
-    progressContainer: { padding: 16 },
-    progressTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: 'white',
-      marginBottom: 12,
-    },
-    progressTimeline: { marginLeft: 8 },
-    progressItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-      opacity: 0.7,
-    },
-    progressDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: 'rgba(255,255,255,0.5)',
-      marginRight: 8,
-    },
-    progressText: { fontSize: 14, color: 'rgba(255,255,255,0.7)' },
-    completedExercise: { opacity: 0.4 },
-    activeExercise: { opacity: 1 },
-    completedDot: { backgroundColor: 'rgba(255,255,255,0.3)' },
-    activeDot: {
-      backgroundColor: 'white',
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-    },
-    activeText: { color: 'white', fontWeight: 'bold' },
-    pauseButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    challengeInput: {
-      backgroundColor: '#F8F8F8',
-      borderRadius: 8,
-      padding: 12,
-      borderWidth: 1,
-      borderColor: '#DDDDDD',
-      minHeight: 80,
-      textAlignVertical: 'top',
-      marginBottom: 16,
-    },
-    expirationSelector: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 16,
-    },
-    expirationOption: {
-      flex: 1,
-      padding: 10,
-      backgroundColor: '#F8F8F8',
-      borderRadius: 8,
-      alignItems: 'center',
-      marginHorizontal: 4,
-      borderWidth: 1,
-      borderColor: '#DDDDDD',
-    },
-    expirationSelected: {
-      backgroundColor: '#FFEBCC',
-      borderColor: '#FF9500',
-    },
-    expirationText: { color: '#555555', fontWeight: '500' },
-    expirationTextSelected: { color: '#FF9500', fontWeight: 'bold' },
-    pointSelector: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 24,
-    },
-    pointAdjust: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: '#F8F8F8',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: '#DDDDDD',
-    },
-    pointValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: '#333333',
-      marginHorizontal: 20,
-    },
-    disclaimerContainer: {
-      flexDirection: 'row',
-      backgroundColor: '#F8F8F8',
-      padding: 12,
-      borderRadius: 8,
-      marginBottom: 24,
-      alignItems: 'center',
-    },
-    disclaimerText: {
-      flex: 1,
-      marginLeft: 8,
-      color: '#555555',
-      fontSize: 14,
-    },
-    sendChallengeButton: {
-      backgroundColor: '#FF9500',
-      paddingVertical: 14,
-      borderRadius: 25,
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    sendChallengeText: {
-      color: 'white',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
-  });
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  scrollView: { flex: 1 },
+  container: { flex: 1, padding: 16, paddingBottom: 24 },
+  startButtonGradient: {
+    borderRadius: 25,
+    marginVertical: 20,
+    marginHorizontal: '20%',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  startButton: { alignItems: 'center', justifyContent: 'center', padding: 15 },
+  startButtonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginVertical: 16,
+    color: '#333333',
+  },
+  exercisesContainer: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderColor: '#DDDDDD',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  exercisesTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  coachNote: {
+    fontSize: 14,
+    color: '#555555',
+    textAlign: 'center',
+    marginVertical: 15,
+    lineHeight: 20,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    color: '#FF9500',
+    marginRight: 5,
+    fontWeight: '500',
+  },
+  featureButton: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginBottom: 16,
+    borderColor: '#DDDDDD',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  featureButtonText: { fontSize: 16, fontWeight: '600', color: '#333333' },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#DDDDDD' },
+  dividerText: {
+    paddingHorizontal: 10,
+    color: '#555555',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  libraryTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  librarySubtitle: { fontSize: 14, color: '#666666', marginBottom: 16 },
+  exerciseRow: { justifyContent: 'space-between', marginBottom: 10 },
+  exerciseCard: {
+    width: '48%',
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderColor: '#DDDDDD',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  exerciseImage: { width: '100%', height: 120, backgroundColor: '#DDDDDD' },
+  exerciseCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    textAlign: 'center',
+    padding: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DDDDDD',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#333333' },
+  closeButton: { padding: 4 },
+  modalScrollView: { padding: 16 },
+  modalImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: '#DDDDDD',
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#555555',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  stepText: {
+    fontSize: 14,
+    color: '#555555',
+    lineHeight: 22,
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  stepNumber: { fontWeight: '600', color: '#FF9500' },
+  videoButton: {
+    backgroundColor: '#FF9500',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 25,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  videoButtonText: { color: '#FFFFFF', fontWeight: '600', marginLeft: 8 },
+  startRecordingButton: {
+    backgroundColor: '#FF9500',
+    padding: 10,
+    borderRadius: 8,
+    margin: 10,
+    alignItems: 'center',
+  },
+  startRecordingButtonText: { color: '#FFFFFF', fontWeight: '600' },
+  recordingOverlay: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+    borderRadius: 8,
+  },
+  recordingText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  resultContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  resultText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 20,
+  },
+  backButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  backButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  cameraControlsContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  cameraButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  cameraBtnContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordIndicator: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FF0000',
+  },
+  recording: { width: 30, height: 30, borderRadius: 4 },
+  recordingInfo: { alignItems: 'center', marginBottom: 20 },
+  timerText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,0,0,0.5)',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  cancelText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  uploadOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  uploadText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  workoutOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'white',
+    zIndex: 1000,
+  },
+  workoutGradient: { flex: 1 },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  closeWorkoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  workoutTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
+  workoutPreview: { flex: 1, paddingBottom: 20 },
+  timelineContainer: { flex: 1, paddingHorizontal: 16 },
+  timelineLine: {
+    position: 'absolute',
+    left: 23,
+    top: 20,
+    bottom: 20,
+    width: 2,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'white',
+    marginTop: 5,
+    marginRight: 12,
+    zIndex: 1,
+  },
+  timelineContent: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  timelineTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  timelineDuration: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 4,
+  },
+  timelineDescription: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  startTimerButton: {
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    alignSelf: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  startTimerText: {
+    color: '#FF9500',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  activeWorkout: { flex: 1 },
+  timerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  currentExerciseName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  currentExerciseDescription: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  timerCircle: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 8,
+    borderColor: 'white',
+    marginBottom: 40,
+  },
+  timerText: { fontSize: 60, fontWeight: 'bold', color: 'white' },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  skipButtonText: { color: 'white', marginRight: 4 },
+  progressContainer: { padding: 16 },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 12,
+  },
+  progressTimeline: { marginLeft: 8 },
+  progressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    opacity: 0.7,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginRight: 8,
+  },
+  progressText: { fontSize: 14, color: 'rgba(255,255,255,0.7)' },
+  completedExercise: { opacity: 0.4 },
+  activeExercise: { opacity: 1 },
+  completedDot: { backgroundColor: 'rgba(255,255,255,0.3)' },
+  activeDot: {
+    backgroundColor: 'white',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  activeText: { color: 'white', fontWeight: 'bold' },
+  pauseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  expirationSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  expirationOption: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+  },
+  expirationSelected: {
+    backgroundColor: '#FFEBCC',
+    borderColor: '#FF9500',
+  },
+  expirationText: { color: '#555555', fontWeight: '500' },
+  expirationTextSelected: { color: '#FF9500', fontWeight: 'bold' },
+  pointSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  pointAdjust: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+  },
+  pointValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginHorizontal: 20,
+  },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F8F8',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  disclaimerText: {
+    flex: 1,
+    marginLeft: 8,
+    color: '#555555',
+    fontSize: 14,
+  },
+  sendChallengeButton: {
+    backgroundColor: '#FF9500',
+    paddingVertical: 14,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sendChallengeText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  workoutBuilderContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    padding: 10,
+  },
+  workoutColumn: {
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  workoutColumnTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  workoutInstructions: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 10,
+  },
+  exerciseTag: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  draggingExercise: {
+    backgroundColor: '#e0e0e0',
+    elevation: 5,
+  },
+  selectedExerciseTag: {
+    backgroundColor: '#fff3e0',
+  },
+  exerciseTagText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  exerciseTagDuration: {
+    fontSize: 14,
+    color: '#666',
+  },
+  durationControl: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  durationControlText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  exerciseTagControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});

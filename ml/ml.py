@@ -5,7 +5,7 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-
+#python -m uvicorn ml:app --host 0.0.0.0 --port 8000 --reload
 app = FastAPI()
 
 UPLOAD_DIR = "uploads"
