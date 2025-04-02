@@ -931,6 +931,23 @@ export default function ForumPage() {
     );
   };
 
+  // Add this helper function above renderSuggestionItem
+  const getActivityImage = (id) => {
+    const images = {
+      1: require('../assets/Activities/park_yoga.jpg'),
+      2: require('../assets/Activities/community_run.jpg'),
+      3: require('../assets/Activities/beach_volleyball.webp'),
+      4: require('../assets/Activities/hiking.webp'),
+      5: require('../assets/Activities/city_cyling.jpg'),
+      6: require('../assets/Activities/boot_camp.jpg'),
+      7: require('../assets/Activities/paddleboarding.jpg'),
+      8: require('../assets/Activities/rock_climbing.jpg'),
+      9: require('../assets/Activities/community_garden.jpg'),
+      10: require('../assets/Activities/dance_fitness.jpg'),
+    };
+    return images[id];
+  };
+
   // Render a suggestion item
   const renderSuggestionItem = ({ item }) => (
     <TouchableOpacity 
@@ -954,9 +971,15 @@ export default function ForumPage() {
         </View>
         
         <View style={styles.suggestionImageContainer}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={28} color={colors.textLight} />
-          </View>
+          <Image
+            source={getActivityImage(item.id)}
+            style={{
+              width: 70,
+              height: 70,
+              borderRadius: 8,
+            }}
+            resizeMode="cover"
+          />
         </View>
       </View>
     </TouchableOpacity>
