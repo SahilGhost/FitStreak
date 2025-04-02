@@ -12,7 +12,8 @@ import {
   TextInput,
   Animated,
   Alert,
-  Linking  //Import Linking
+  Linking,
+  ActivityIndicator // Import ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -177,6 +178,12 @@ export default function WorkoutsPage({ navigation }) {
     pointValue: 10,
   });
 
+  const [aiCoachMessage, setAiCoachMessage] = useState('');
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'assistant', content: 'Hi! I\'m your AI fitness coach. Ask me anything about workouts, form, or nutrition!' }
+  ]);
+
   const requestPermissions = async () => {
     const { status: cameraStatus } = await requestCameraPermission();
     const { status: micStatus } = await requestMicrophonePermission();
@@ -197,6 +204,75 @@ export default function WorkoutsPage({ navigation }) {
     }
     return cameraStatus === 'granted' && micStatus === 'granted';
   };
+
+  const sendMessageToAiCoach = async () => {
+    if (!aiCoachMessage.trim()) return;
+
+    const userMessage = aiCoachMessage.trim();
+    setAiCoachMessage('');
+    setIsAiThinking(true);
+
+    // Add user message to chat
+    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
+
+    try {
+        const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyBa80AkcHCRJrVLh9YYSKQHyKWMNSKqo1g', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `You are a fitness coach assistant. Please provide a concise, helpful response to: ${userMessage}`
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 200,
+                    topP: 0.8,
+                    topK: 40
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        console.log('API Response:', data);
+
+        if (!response.ok) {
+            throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+        }
+
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            console.error('Unexpected API response structure:', data);
+            throw new Error('Invalid API response format');
+        }
+
+        // Format the AI response to handle bold text
+        const aiResponse = data.candidates[0].content.parts[0].text;
+        
+        setChatHistory(prev => [...prev, { 
+            role: 'assistant', 
+            content: aiResponse,
+            containsBold: aiResponse.includes('**') // Flag to indicate if message contains bold text
+        }]);
+
+    } catch (error) {
+        console.error('AI Coach error:', error);
+        setChatHistory(prev => [...prev, {
+            role: 'assistant',
+            content: `Sorry, I encountered an error: ${error.message}. Please try again.`
+        }]);
+    } finally {
+        setIsAiThinking(false);
+    }
+};
 
   const startWorkout = () => setWorkoutActive(true);
   const startWorkoutTimer = () => {
@@ -416,7 +492,60 @@ export default function WorkoutsPage({ navigation }) {
           <View style={styles.exercisesContainer}>
             <Text style={styles.exercisesTitle}>DETAILED EXERCISES WITH TIMES...</Text>
 
-            <Text style={styles.coachNote}>Include AI Coach Tips/Suggestions in between</Text>
+            <View style={styles.aiCoachContainer}>
+              <Text style={styles.aiCoachTitle}>AI Coach</Text>
+              <ScrollView style={styles.chatHistory}>
+                {chatHistory.map((message, index) => (
+                  <View 
+                    key={index} 
+                    style={[
+                      styles.messageContainer,
+                      message.role === 'user' ? styles.userMessage : styles.aiMessage
+                    ]}
+                  >
+                    {message.containsBold ? (
+                      <Text style={styles.messageText}>
+                        {message.content.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            // Remove ** and apply bold style
+                            return (
+                              <Text key={index} style={{ fontWeight: 'bold' }}>
+                                {part.slice(2, -2)}
+                              </Text>
+                            );
+                          }
+                          return <Text key={index}>{part}</Text>;
+                        })}
+                      </Text>
+                    ) : (
+                      <Text style={styles.messageText}>{message.content}</Text>
+                    )}
+                  </View>
+                ))}
+                {isAiThinking && (
+                  <View style={styles.aiMessage}>
+                    <ActivityIndicator color={colors.primaryOrange} />
+                  </View>
+                )}
+              </ScrollView>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={aiCoachMessage}
+                  onChangeText={setAiCoachMessage}
+                  placeholder="Ask your AI coach..."
+                  placeholderTextColor="#999"
+                  multiline
+                />
+                <TouchableOpacity 
+                  style={styles.sendButton} 
+                  onPress={sendMessageToAiCoach}
+                  disabled={!aiCoachMessage.trim()}
+                >
+                  <Ionicons name="send" size={24} color={aiCoachMessage.trim() ? colors.primaryOrange : '#999'} />
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <TouchableOpacity style={styles.saveButton}>
               <Text style={styles.saveButtonText}>Save This Routine</Text>
@@ -1009,6 +1138,69 @@ const styles = StyleSheet.create({
     color: '#333333',
     textAlign: 'center',
     marginBottom: 15,
+  },
+  aiCoachContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
+    maxHeight: 400,
+  },
+  aiCoachTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  chatHistory: {
+    maxHeight: 280,
+  },
+  messageContainer: {
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    maxWidth: '85%',
+  },
+  userMessage: {
+    backgroundColor: '#F0F0F0',
+    alignSelf: 'flex-end',
+  },
+  aiMessage: {
+    backgroundColor: '#FFF5E6',
+    alignSelf: 'flex-start',
+  },
+  messageText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
+    marginTop: 8,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    fontSize: 14,
+    maxHeight: 100,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   coachNote: {
     fontSize: 14,
