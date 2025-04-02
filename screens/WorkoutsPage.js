@@ -13,12 +13,12 @@ import {
   Animated,
   Alert,
   Linking,
-  ActivityIndicator // Import ActivityIndicator
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'; // Import DraggableFlatList
+
 
 const colors = {
   primaryOrange: '#FF9500',
@@ -833,24 +833,21 @@ export default function WorkoutsPage({ navigation }) {
           <View style={styles.workoutBuilderContainer}>
             <View style={styles.workoutColumn}>
               <Text style={styles.workoutColumnTitle}>Available Exercises</Text>
-              <DraggableFlatList
+              <FlatList
                 data={availableExercises}
-                onDragEnd={({ data }) => setAvailableExercises(data)}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item, drag, isActive }) => (
-                  <ScaleDecorator>
-                    <TouchableOpacity
-                      style={[
-                        styles.exerciseTag,
-                        isActive && styles.draggingExercise
-                      ]}
-                      onLongPress={drag}
-                      disabled={isActive}
-                    >
-                      <Text style={styles.exerciseTagText}>{item.name}</Text>
-                      <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
-                    </TouchableOpacity>
-                  </ScaleDecorator>
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.exerciseTag}
+                    onPress={() => {
+                      if (!selectedExercises.find(e => e.id === item.id)) {
+                        setSelectedExercises([...selectedExercises, { ...item }]);
+                      }
+                    }}
+                  >
+                    <Text style={styles.exerciseTagText}>{item.name}</Text>
+                    <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
+                  </TouchableOpacity>
                 )}
               />
             </View>
@@ -860,47 +857,49 @@ export default function WorkoutsPage({ navigation }) {
               <Text style={styles.workoutInstructions}>
                 Drag exercises here and reorder them
               </Text>
-              <DraggableFlatList
+              <FlatList
                 data={selectedExercises}
-                onDragEnd={({ data }) => setSelectedExercises(data)}
-                keyExtractor={(item, index) => `selected-${item.id}-${index}`}
-                renderItem={({ item, drag, isActive, index }) => (
-                  <ScaleDecorator>
-                    <TouchableOpacity
-                      style={[
-                        styles.exerciseTag,
-                        styles.selectedExerciseTag,
-                        isActive && styles.draggingExercise
-                      ]}
-                      onLongPress={drag}
-                      disabled={isActive}
-                    >
+                keyExtractor={(item, index) => `${item.id}-${index}`}
+                renderItem={({ item, index }) => (
+                  <View style={[styles.exerciseTag, styles.selectedExerciseTag]}>
+                    <View style={{ flex: 1 }}>
                       <Text style={styles.exerciseTagText}>{item.name}</Text>
-                      <View style={styles.exerciseTagControls}>
-                        <TouchableOpacity
-                          onPress={() => {
-                            const newExercises = [...selectedExercises];
-                            newExercises[index].duration = Math.max(15, newExercises[index].duration - 15);
-                            setSelectedExercises(newExercises);
-                          }}
-                          style={styles.durationControl}
-                        >
-                          <Text style={styles.durationControlText}>-</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            const newExercises = [...selectedExercises];
-                            newExercises[index].duration = Math.min(120, newExercises[index].duration + 15);
-                            setSelectedExercises(newExercises);
-                          }}
-                          style={styles.durationControl}
-                        >
-                          <Text style={styles.durationControlText}>+</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  </ScaleDecorator>
+                      <Text style={styles.exerciseTagDuration}>{item.duration}s</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const updated = [...selectedExercises];
+                          updated.splice(index, 1);
+                          updated.splice(index - 1, 0, item);
+                          setSelectedExercises(updated);
+                        }}
+                        disabled={index === 0}
+                      >
+                        <Ionicons name="arrow-up" size={20} color={index === 0 ? '#ccc' : colors.primaryOrange} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const updated = [...selectedExercises];
+                          updated.splice(index, 1);
+                          updated.splice(index + 1, 0, item);
+                          setSelectedExercises(updated);
+                        }}
+                        disabled={index === selectedExercises.length - 1}
+                      >
+                        <Ionicons name="arrow-down" size={20} color={index === selectedExercises.length - 1 ? '#ccc' : colors.primaryOrange} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const updated = [...selectedExercises];
+                          updated.splice(index, 1);
+                          setSelectedExercises(updated);
+                        }}
+                      >
+                        <Ionicons name="close" size={20} color="red" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 )}
               />
             </View>

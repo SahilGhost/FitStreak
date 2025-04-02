@@ -56,7 +56,7 @@ export default function HomeScreen() {
         <View style={styles.container}>
           {/* Header with Notification */}
           <View style={styles.header}>
-            <Text style={styles.welcomeText}>Welcome Back <Text style={styles.username}>Sahil</Text></Text>
+            <Text style={styles.welcomeText}>Welcome Back <Text style={styles.username}>ironman 🚀</Text></Text>
             <TouchableOpacity style={styles.notificationIcon}>
               <Ionicons name="notifications-outline" size={24} color={colors.textDark} />
             </TouchableOpacity>
